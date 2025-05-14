@@ -1,6 +1,7 @@
 # Noticing Game
 
 **The game interface:**
+
 ![The game interface](assets/noticing_game_1.png)
 
 ## Description
