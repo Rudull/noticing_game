@@ -1,0 +1,127 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Noticing Game</title>
+        <meta charset="UTF-8" />
+        <style>
+            :root {
+                /* Base color and variants */
+                --primary-color: #6544e9;
+                --primary-hover: #5435d0;
+
+                /* Light theme (default) */
+                --bg-color: white;
+                --text-color: #333;
+                --secondary-text: #666;
+            }
+
+            @media (prefers-color-scheme: dark) {
+                :root {
+                    --bg-color: #222;
+                    --text-color: #e0e0e0;
+                    --secondary-text: #aaa;
+                }
+            }
+
+            body {
+                width: 300px;
+                font-family: Arial, sans-serif;
+                padding: 10px;
+                background-color: var(--bg-color);
+                color: var(--text-color);
+            }
+            h1 {
+                font-size: 16px;
+                color: var(--primary-color);
+                margin-bottom: 15px;
+                text-align: center;
+            }
+            button {
+                background-color: var(--primary-color);
+                color: white;
+                border: none;
+                padding: 8px 12px;
+                border-radius: 4px;
+                cursor: pointer;
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            button:hover {
+                background-color: var(--primary-hover);
+            }
+            .info {
+                font-size: 12px;
+                color: var(--secondary-text);
+                text-align: center;
+                margin-top: 10px;
+            }
+            .about-section {
+                font-size: 12px;
+                color: var(--secondary-text);
+                border-top: 1px solid var(--secondary-text);
+                margin-top: 15px;
+                padding-top: 10px;
+            }
+            .donate-button {
+                text-align: center;
+                margin-top: 10px;
+            }
+            .heart-button {
+                background-color: transparent;
+                color: #ff4c4c;
+                font-size: 20px;
+                width: auto;
+                border: none;
+                cursor: pointer;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Noticing Game</h1>
+        <button id="showPanelBtn">Play Noticing Game</button>
+        <div class="info">
+            You can also use the "NG" button in the YouTube player controls.
+        </div>
+
+        <div class="about-section">
+            <p><strong>Version:</strong> 0.1.0</p>
+            <p>
+                <strong>Contact:</strong>
+                <a
+                    href="https://www.linkedin.com/in/rafaelhernandezbustamante"
+                    target="_blank"
+                    >Rafael Hernandez</a
+                >
+            </p>
+            <p>
+                <strong>Project:</strong>
+                <a href="https://github.com/Rudull" target="_blank">GitHub</a>
+            </p>
+
+            <h3>How to play:</h3>
+            <p>1. Watch YouTube videos with subtitles</p>
+            <p>2. Click "Play" to detect frequent words</p>
+            <p>
+                3. When you notice a word from the list being said in the video,
+                quickly click it
+            </p>
+            <p>
+                4. You get points for correctly noticing words. Be careful!
+                You'll lose points if you click words that haven't appeared
+                recently.
+            </p>
+
+            <p><em>Developed by: Rafael Hernandez Bustamante</em></p>
+
+            <div class="donate-button">
+                <a
+                    href="https://www.paypal.com/paypalme/rahebu852?ppid=PPC000628&cnac=CO&rsta=es_CO%28es_AG%29&cust=QHUYRRLFTR248&unptid=2034d374-429b-11e8-a5dc-9c8e992ea258&t&cal=3c53be2744ab1&calc=3c53be2744ab1&calf=3c53be2744ab1&unp_tpcid=ppme-social-user-profile-created&page=main%3Aemail&pgrp=main%3Aemail&e=op&mchn=em&s=ci&mail=sys"
+                    target="_blank"
+                >
+                    <button class="heart-button">❤️ Donate</button>
+                </a>
+            </div>
+        </div>
+        <script src="popup.js"></script>
+    </body>
+</html>

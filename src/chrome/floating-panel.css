@@ -1,0 +1,425 @@
+/* Variables para tema claro y oscuro */
+:root {
+    /* Color base y variantes */
+    --primary-color: #6544e9;
+    --primary-hover: #5435d0;
+
+    /* Tema claro (por defecto) */
+    --bg-color: white;
+    --panel-bg: white;
+    --text-color: #333;
+    --secondary-text: #666;
+    --border-color: #ddd;
+    --divider-color: #eee;
+    --header-text: white;
+    --shadow-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Tema oscuro */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-color: #1a1a1a;
+        --panel-bg: #242424;
+        --text-color: #e0e0e0;
+        --secondary-text: #aaaaaa;
+        --border-color: #444;
+        --divider-color: #333;
+        --header-text: white;
+        --shadow-color: rgba(0, 0, 0, 0.5);
+    }
+}
+
+.noticing-game-panel {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    width: 300px; /* Ancho inicial */
+    min-width: 200px; /* Ancho mínimo */
+    min-height: 150px; /* Altura mínima */
+    background-color: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px var(--shadow-color);
+    z-index: 9999;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+    resize: both; /* Permitir redimensionamiento */
+    color: var(--text-color);
+}
+
+/* Añadir un manejador de redimensionamiento visual */
+.noticing-game-resizer {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    right: 0;
+    bottom: 0;
+    cursor: nwse-resize;
+    background-color: var(--primary-color);
+    opacity: 0.3;
+}
+
+.noticing-game-header {
+    background-color: var(--primary-color);
+    color: var(--header-text);
+    padding: 10px;
+    display: flex;
+    justify-content: center; /* Center title */
+    align-items: center;
+    position: relative; /* To allow absolute positioning of buttons */
+}
+
+.noticing-game-right-buttons {
+    display: flex;
+    align-items: center;
+    position: absolute;
+    right: 10px; /* Position at the right side of header */
+}
+
+.noticing-game-settings-btn,
+.noticing-game-donate-btn,
+.noticing-game-close {
+    background: none;
+    border: none;
+    color: #e0e0e0; /* Tono de gris claro para todos */
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 5px;
+    transition: all 0.2s ease;
+    opacity: 0.8; /* Ligera transparencia */
+}
+
+.noticing-game-settings-btn svg,
+.noticing-game-donate-btn svg {
+    fill: #e0e0e0; /* Color base igual que los botones originales */
+    width: 16px;
+    height: 16px;
+    transition:
+        all 0.2s ease,
+        fill 0.2s ease;
+}
+
+.noticing-game-settings-btn:hover svg,
+.noticing-game-donate-btn:hover svg {
+    fill: #ffffff; /* Color blanco al pasar el mouse */
+    transform: scale(1.2);
+}
+
+/* Color específico para el ícono de corazón */
+.heart-icon {
+    fill: #ff4c4c; /* Un color rojo para el corazón */
+}
+
+.noticing-game-donate-btn:hover .heart-icon {
+    fill: #ff7070; /* Un rojo más claro al pasar el mouse */
+}
+
+.noticing-game-settings-btn:hover,
+.noticing-game-donate-btn:hover,
+.noticing-game-close:hover {
+    transform: scale(1.2);
+    color: #ffffff; /* Al pasar el mouse, se vuelve blanco */
+    opacity: 1;
+}
+
+.noticing-game-about-panel {
+    position: absolute;
+    top: 50px;
+    left: 0;
+    width: 100%;
+    background-color: var(--panel-bg);
+    border-top: 1px solid var(--border-color);
+    box-shadow: 0 4px 8px var(--shadow-color);
+    z-index: 1;
+    max-height: 80vh;
+    overflow-y: auto;
+    min-width: 350px; /* Ancho mínimo para todo el contenido */
+}
+
+.noticing-game-about-content {
+    padding: 15px;
+    font-size: 14px; /* Aumentamos tamaño de texto */
+    line-height: 1.4; /* Mejoramos el espaciado entre líneas */
+}
+
+.noticing-game-about-content h3 {
+    color: var(--primary-color);
+    margin-top: 15px; /* Más espacio arriba */
+    margin-bottom: 8px; /* Más espacio abajo */
+    font-size: 16px; /* Título más grande */
+}
+
+.noticing-game-about-content a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.noticing-game-about-content a:hover {
+    text-decoration: underline;
+}
+
+.noticing-game-close-about {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 15px;
+}
+
+.noticing-game-close-about:hover {
+    background-color: var(--primary-hover);
+}
+
+.noticing-game-title {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 0;
+    /* No need for positioning as it's now centered by the parent */
+}
+
+.noticing-game-content {
+    padding: 15px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.noticing-game-status {
+    font-style: italic;
+    color: var(--secondary-text);
+    margin-bottom: 10px;
+}
+
+.noticing-game-list {
+    border-top: 1px solid var(--divider-color);
+    margin-top: 10px;
+    padding-top: 10px;
+}
+
+.noticing-game-word {
+    padding: 3px 0;
+    border-bottom: 1px solid var(--divider-color);
+    display: flex;
+    justify-content: space-between;
+}
+
+.noticing-game-frequency {
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+.noticing-game-button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.noticing-game-button:hover {
+    background-color: var(--primary-hover);
+}
+
+/* Estilos para el botón en el reproductor de YouTube */
+.noticing-game-toggle {
+    opacity: 0.9;
+    font-family: Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Estilos para hacer el panel arrastrable */
+.noticing-game-draggable-header {
+    cursor: move;
+    user-select: none;
+}
+
+/* Estilos para los botones de palabras */
+.noticing-game-buttons-container {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-top: 15px;
+}
+
+.noticing-game-word-button {
+    background-color: var(--panel-bg);
+    color: var(--text-color);
+    border: 1px solid var(--primary-color);
+    border-radius: 15px;
+    padding: 5px 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 40px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.noticing-game-word-button:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.noticing-game-word-button.word-clicked {
+    transform: scale(1.1);
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* Estilo para palabras ya notadas */
+.noticing-game-word-button.word-already-noted {
+    opacity: 0.7;
+    transform: scale(0.95);
+    background-color: #aaaaaa;
+    color: white;
+    border-color: #888888;
+}
+
+.noticing-game-total-info {
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: var(--primary-color);
+}
+
+.noticing-game-user-score {
+    margin-bottom: 10px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.noticing-game-more-info {
+    margin-top: 15px;
+    font-style: italic;
+    color: var(--secondary-text);
+    font-size: 12px;
+    text-align: center;
+}
+
+#user-score-value {
+    color: var(--primary-color);
+}
+
+.noticing-game-word-button.word-penalty {
+    transform: scale(0.9);
+    background-color: #ff4c4c;
+    color: white;
+}
+
+/* Estilos para el selector de listas de palabras */
+.noticing-game-list-selector {
+    margin: 10px 0;
+}
+
+.noticing-game-list-selector select {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    background-color: var(--panel-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+
+/* Estilos para la importación de listas */
+#import-list-file {
+    display: block;
+    margin: 10px 0;
+    width: 100%;
+}
+
+.import-list-status {
+    margin-top: 5px;
+    font-style: italic;
+    color: var(--secondary-text);
+}
+
+/* Estilos para información de licencia */
+.noticing-game-about-content a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.noticing-game-about-content a:hover {
+    text-decoration: underline;
+}
+
+/* Estilos para la importación y manejo de listas */
+.word-list-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+    gap: 10px;
+}
+
+.file-import-container {
+    margin: 10px 0;
+}
+
+.file-import-container p {
+    margin-bottom: 8px;
+}
+
+.import-file-wrapper {
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 10px;
+}
+
+.noticing-game-about-content button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    min-width: 100px;
+    transition: background-color 0.2s;
+}
+
+.noticing-game-about-content button:hover {
+    background-color: var(--primary-hover);
+}
+
+.delete-list-btn {
+    background-color: #444 !important; /* Color gris oscuro */
+}
+
+.delete-list-btn:hover {
+    background-color: #666 !important;
+}
+
+/* Diálogo de confirmación */
+.confirm-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--panel-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    width: 300px;
+    text-align: center;
+}
+
+.confirm-dialog-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 15px;
+}
