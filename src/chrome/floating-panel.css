@@ -77,6 +77,7 @@
 }
 
 .noticing-game-settings-btn,
+.noticing-game-rate-btn,
 .noticing-game-donate-btn,
 .noticing-game-close {
     background: none;
@@ -90,6 +91,7 @@
 }
 
 .noticing-game-settings-btn svg,
+.noticing-game-rate-btn svg,
 .noticing-game-donate-btn svg {
     fill: #e0e0e0; /* Color base igual que los botones originales */
     width: 16px;
@@ -100,9 +102,19 @@
 }
 
 .noticing-game-settings-btn:hover svg,
+.noticing-game-rate-btn:hover svg,
 .noticing-game-donate-btn:hover svg {
     fill: #ffffff; /* Color blanco al pasar el mouse */
     transform: scale(1.2);
+}
+
+/* Color específico para el ícono de estrella */
+.star-icon {
+    fill: #ffd700; /* Un color dorado para la estrella */
+}
+
+.noticing-game-rate-btn:hover .star-icon {
+    fill: #ffec8a; /* Un dorado más claro al pasar el mouse */
 }
 
 /* Color específico para el ícono de corazón */
@@ -115,6 +127,7 @@
 }
 
 .noticing-game-settings-btn:hover,
+.noticing-game-rate-btn:hover,
 .noticing-game-donate-btn:hover,
 .noticing-game-close:hover {
     transform: scale(1.2);
