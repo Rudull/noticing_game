@@ -1,10 +1,9 @@
 ## Road Map
 
-3. Cuando el navegador se abra por primera vez, se debe mostrar la ventana de inicio de la extensión.
-Colocar botón de calificar en la ventana de inicio de la extensión.
-
-4. Los textos con comillas siguen si poder ser notados. Por lo que veo se trata de oraciones que están entre comillas, la primera palabra que esta junto a las comillas no es detectada como una palabra a notar y los puntos son descontados. El programa debería de permitir notar cualquier palabra en los subtítulos aunque esta precedida o seguida de un carácter espacial.
-
+1. La palabras adyacentes a comillas simples o dobles no permiten ser notalas correctamente. Es decir, si una palabra que hace parte de una oración que esta entre comillas y es una de las palabras de listado a notar, si el usuario hace clic para marcar que noto noto la palabra en el momento correcto, El usuario es penalizado. Esto es incorrecto.
+Por ejemplo para la frace:
+“Where are all the people?” the little prince asked
+Si la palabra Where es una de las palabras en el listado de palabras a notar, entonces por el hecho de estar presidida de comillas dobles no es detectada en el momento como una palabra a notar, y si el usuario la marca como notada es penalizado.
 
 
 8. Reducir informacion en la direccion
