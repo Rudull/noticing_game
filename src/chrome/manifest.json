@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Noticing Game",
-  "version": "0.1.0",
-  "description": "Detecta palabras de un listado de frecuencia en los subtítulos de videos de YouTube mediante la API oficial",
+  "version": "0.1.1",
+  "description": "Enhance language learning by detecting frequent words in YouTube subtitles, enabling interactive vocabulary practice.",
   "permissions": ["activeTab", "storage", "tabs"],
   "host_permissions": ["*://*.youtube.com/*", "https://www.googleapis.com/*"],
   "action": {
@@ -18,6 +18,7 @@
       "matches": ["*://*.youtube.com/watch?*"],
       "js": [
         "content-bridge.js",
+        "text-processing.js",
         "youtube-video-utils.js",
         "word-detection.js",
         "subtitle-extraction.js",

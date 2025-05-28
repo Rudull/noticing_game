@@ -1,7 +1,7 @@
 {
   "name": "noticing-game",
-  "version": "0.1.0",
-  "description": "Extensión para detectar palabras de frecuencia en subtítulos de YouTube",
+  "version": "0.1.1",
+  "description": "Enhance your target language learning by detecting frequently asked words from a custom list within YouTube video subtitles, enabling interactive vocabulary practice.",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
