@@ -7,10 +7,13 @@ window.GameLogic = (function () {
   const MAX_POINTS = 100; // Puntos máximos por palabra
   const PENALTY_POINTS = 75; // Puntos de penalización
 
-  // Función utilitaria para formatear la palabra (asegurando que "i" se muestre como "I")
+  // Función utilitaria para formatear la palabra (asegurando que "i" y "i'm" se muestren con mayúscula inicial)
   function formatWordDisplay(word) {
-    const displayWord = word.toLowerCase() === "i" ? "I" : word;
-    return displayWord;
+    const lowerWord = word.toLowerCase();
+    if (lowerWord === "i" || lowerWord === "i'm") {
+      return lowerWord === "i" ? "I" : "I'm";
+    }
+    return word;
   }
 
   // Función para crear los puntos de progreso
@@ -39,6 +42,14 @@ window.GameLogic = (function () {
 
   // Función auxiliar para formatear números con separadores de miles usando punto
   function formatNumber(num) {
+    // Validar entrada
+    if (typeof num !== 'number' || isNaN(num)) {
+      return "0";
+    }
+    
+    // Asegurar que sea un entero
+    num = Math.floor(Math.abs(num));
+    
     // Convertir número a string y formatear manualmente con puntos como separadores de miles
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   }
@@ -80,30 +91,71 @@ window.GameLogic = (function () {
   function processWordClick(wordButton, wordInfo, container, statusElement) {
     const wordText = wordInfo.word.toLowerCase().trim();
 
-    // Importante: Acceder a SubtitleProcessor directamente desde el objeto window
-    // para asegurarnos de que tenemos la referencia correcta
+    // Acceso seguro a SubtitleProcessor
     const SP = window.SubtitleProcessor;
 
     console.log(`Clic en botón de palabra: "${wordText}"`);
 
     if (!SP) {
       console.error("SubtitleProcessor no está disponible");
+      if (statusElement) {
+        statusElement.textContent = "Error: Subtitle processor not available. Please reload the page.";
+      }
       return;
+    }
+
+    // Verificar que el procesador esté inicializado
+    if (typeof SP.isInitialized === 'function' && !SP.isInitialized()) {
+      console.error("SubtitleProcessor no está inicializado");
+      if (statusElement) {
+        statusElement.textContent = "Extension is still loading. Please wait and try again.";
+      }
+      return;
+    }
+
+    // Verificar que las funciones necesarias estén disponibles
+    if (typeof SP.isWordRecent !== 'function' || typeof SP.markWordAsNoted !== 'function') {
+      console.error("SubtitleProcessor methods not available");
+      if (statusElement) {
+        statusElement.textContent = "Error: Required functions not available. Please reload the page.";
+      }
+      return;
+    }
+
+    // Obtener recentWords de forma segura
+    let recentWords = {};
+    if (typeof SP.recentWords === 'function') {
+      recentWords = SP.recentWords();
+    } else if (SP.recentWords && typeof SP.recentWords === 'object') {
+      recentWords = SP.recentWords;
     }
 
     console.log(
       `Estado actual de recentWords:`,
-      JSON.stringify(SP.recentWords),
+      JSON.stringify(recentWords),
     );
 
     // Obtener información detallada sobre la palabra
-    const wordStatus = SP.isWordRecent(wordText);
+    let wordStatus;
+    try {
+      wordStatus = SP.isWordRecent(wordText);
+    } catch (error) {
+      console.error("Error checking word status:", error);
+      if (statusElement) {
+        statusElement.textContent = "Error checking word status. Please try again.";
+      }
+      return;
+    }
 
     if (wordStatus.isRecent && !wordStatus.alreadyNoted) {
       // La palabra es reciente y no ha sido notada en esta aparición
       handleCorrectClick(wordButton, wordInfo, wordStatus.timeDiff);
       // Marcar la palabra como notada para esta aparición
-      SP.markWordAsNoted(wordText);
+      try {
+        SP.markWordAsNoted(wordText);
+      } catch (error) {
+        console.error("Error marking word as noted:", error);
+      }
     } else if (wordStatus.isRecent && wordStatus.alreadyNoted) {
       // La palabra ya fue notada en esta aparición
       handleAlreadyNotedClick(wordButton, wordInfo, statusElement);
@@ -127,6 +179,12 @@ window.GameLogic = (function () {
     console.log(
       `¡ÉXITO! Palabra "${wordInfo.word}" encontrada como reciente, tiempo: ${timeDiff}ms`,
     );
+
+    // Validar timeDiff
+    if (typeof timeDiff !== 'number' || timeDiff < 0) {
+      console.warn("Invalid timeDiff value, using default");
+      timeDiff = 1000; // Valor por defecto
+    }
 
     // Incrementar contador de clics para esta palabra
     const currentClicks = parseInt(wordButton.dataset.clicks) || 0;
@@ -346,16 +404,28 @@ window.GameLogic = (function () {
 
   // Crear botón de palabra
   function createWordButton(wordInfo, index, container, statusElement) {
+    if (!wordInfo || !wordInfo.word) {
+      console.error("Invalid wordInfo provided to createWordButton");
+      return null;
+    }
+
     const wordButton = document.createElement("button");
     wordButton.className = "noticing-game-word-button";
     wordButton.textContent = formatWordDisplay(wordInfo.word);
-    wordButton.title = `Frecuencia en el video: ${wordInfo.count}`;
+    wordButton.title = `Frecuencia en el video: ${wordInfo.count || 0}`;
     wordButton.dataset.clicks = 0;
     wordButton.dataset.index = index;
 
-    // Agregar evento de clic
+    // Agregar evento de clic con manejo de errores
     wordButton.addEventListener("click", function () {
-      processWordClick(this, wordInfo, container, statusElement);
+      try {
+        processWordClick(this, wordInfo, container, statusElement);
+      } catch (error) {
+        console.error("Error processing word click:", error);
+        if (statusElement) {
+          statusElement.textContent = "Error processing click. Please try again.";
+        }
+      }
     });
 
     return wordButton;

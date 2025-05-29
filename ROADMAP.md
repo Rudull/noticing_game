@@ -6,6 +6,3 @@ Por ejemplo para la frase:
 “Where are all the people?” the little prince asked
 <subtitles>
 Si la palabra Where es una de las palabras en el listado de palabras a notar, entonces por el hecho de estar presidida de comillas dobles no es tenida en cuenta como una palabra a notar, y si el usuario la marca como notada es penalizado.
-
-
-10. Si el canal de Youtube no es primium el complemento no encuentra ninguna palabra. Pero si los es si puede encontrar palabras. No se a que se debe esto, posiblemente un problema relacionado con la autenticación o permisos del usuario o con el hecho de los anuncios interfieran de alguna manera.

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Noticing Game",
-  "version": "0.1.1",
+  "version": "0.2.1",
   "description": "Enhance language learning by detecting frequent words in YouTube subtitles, enabling interactive vocabulary practice.",
   "permissions": ["activeTab", "storage", "tabs"],
   "host_permissions": ["*://*.youtube.com/*", "https://www.googleapis.com/*"],

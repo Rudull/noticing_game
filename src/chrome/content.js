@@ -1,10 +1,64 @@
 // Main script injected into YouTube page
 console.log("Noticing Game: Content script loaded");
 
-// Verificar que el puente de comunicación esté disponible
+// Guardar referencia al postMessage original si no existe
 if (!window.postMessageOriginal) {
-    // Guardar referencia al original por si acaso
-    window.postMessageOriginal = window.postMessage;
+    window.postMessageOriginal = window.postMessage.bind(window);
+}
+
+// Función para verificar si el contexto de la extensión es válido
+function isExtensionContextValid() {
+    try {
+        // Verificar si chrome y chrome.runtime están disponibles
+        if (!chrome || !chrome.runtime) {
+            return false;
+        }
+        
+        // Verificar si el runtime id está disponible (indica contexto válido)
+        if (!chrome.runtime.id) {
+            return false;
+        }
+        
+        // Verificar si lastError indica que el contexto se invalidó
+        if (chrome.runtime.lastError) {
+            console.warn('Chrome runtime error detected:', chrome.runtime.lastError.message);
+            return false;
+        }
+        
+        return true;
+    } catch (error) {
+        console.warn('Extension context validation error:', error);
+        return false;
+    }
+}
+
+// Función para manejar contexto invalidado
+function handleInvalidContext() {
+    console.log('Extension context invalidated in content script, cleaning up...');
+    
+    // Limpiar intervalos si existen
+    if (window.noticingGameSubtitleInterval) {
+        clearInterval(window.noticingGameSubtitleInterval);
+        window.noticingGameSubtitleInterval = null;
+    }
+    if (window.noticingGameHiddenSubtitleInterval) {
+        clearInterval(window.noticingGameHiddenSubtitleInterval);
+        window.noticingGameHiddenSubtitleInterval = null;
+    }
+    
+    // Notificar al usuario si es posible
+    try {
+        const statusElements = document.querySelectorAll('.noticing-game-status');
+        statusElements.forEach(element => {
+            element.textContent = 'Extension reloaded. Please refresh the page to continue using Noticing Game.';
+            element.style.color = 'orange';
+        });
+        
+        // También mostrar alerta
+        alert('Noticing Game extension was reloaded. Please refresh the page to continue using it.');
+    } catch (error) {
+        console.warn('Could not update status elements:', error);
+    }
 }
 
 // Use the SubtitleProcessor module
@@ -42,7 +96,11 @@ function initializeExtension() {
         typeof window.UIManager.waitForYouTubeControls === "function"
     ) {
         window.UIManager.waitForYouTubeControls();
-        SP.setupURLChangeListener();
+        
+        // Verificar que SP esté disponible antes de usarlo
+        if (SP && typeof SP.setupURLChangeListener === "function") {
+            SP.setupURLChangeListener();
+        }
 
         // Reset analysis state when initializing for a new video
         window.lastAnalyzedVideoId = null;
@@ -73,24 +131,28 @@ function initializeExtension() {
         const subtitlesVisible =
             ccButton && ccButton.getAttribute("aria-pressed") === "true";
 
-        if (subtitlesVisible) {
-            // Usar el método existente si hay subtítulos visibles
-            SP.setupSubtitleObserver();
-            console.log(
-                "Noticing Game: Initialized with visible subtitles mode",
-            );
-        } else {
-            // Usar el nuevo método para detección sin subtítulos visibles
-            if (typeof SP.setupHiddenSubtitleDetection === "function") {
-                SP.setupHiddenSubtitleDetection();
-                console.log(
-                    "Noticing Game: Initialized with hidden subtitles detection",
-                );
+        if (SP) {
+            if (subtitlesVisible) {
+                // Usar el método existente si hay subtítulos visibles
+                if (typeof SP.setupSubtitleObserver === "function") {
+                    SP.setupSubtitleObserver();
+                    console.log(
+                        "Noticing Game: Initialized with visible subtitles mode",
+                    );
+                }
             } else {
-                console.warn(
-                    "Noticing Game: Hidden subtitle detection not available, falling back to normal mode",
-                );
-                SP.setupSubtitleObserver();
+                // Usar el nuevo método para detección sin subtítulos visibles
+                if (typeof SP.setupHiddenSubtitleDetection === "function") {
+                    SP.setupHiddenSubtitleDetection();
+                    console.log(
+                        "Noticing Game: Initialized with hidden subtitles detection",
+                    );
+                } else if (typeof SP.setupSubtitleObserver === "function") {
+                    console.warn(
+                        "Noticing Game: Hidden subtitle detection not available, falling back to normal mode",
+                    );
+                    SP.setupSubtitleObserver();
+                }
             }
         }
 
@@ -98,7 +160,7 @@ function initializeExtension() {
         console.log("Noticing Game: Successfully initialized");
     } else {
         console.error(
-            "Noticing Game: function waitForYouTubeControls not available, retrying in 2 seconds",
+            "Noticing Game: UIManager not available, retrying in 2 seconds",
         );
         setTimeout(initializeExtension, 2000);
     }
@@ -178,6 +240,9 @@ function showFloatingPanel() {
 function safePostMessage(message) {
     try {
         // Asegurarse de que tenga una fuente identificable
+        if (!message || typeof message !== 'object') {
+            message = { data: message };
+        }
         message.source = "noticing-game-extension";
 
         // Usar el origen correcto para la ventana actual
@@ -188,9 +253,9 @@ function safePostMessage(message) {
             message,
         );
 
-        // Usar la función original o la nuestra dependiendo de disponibilidad
-        if (window.postMessageOriginal) {
-            window.postMessageOriginal.call(window, message, targetOrigin);
+        // Usar la función original de manera segura
+        if (typeof window.postMessageOriginal === 'function') {
+            window.postMessageOriginal(message, targetOrigin);
         } else {
             window.postMessage(message, targetOrigin);
         }
@@ -205,6 +270,16 @@ function safePostMessage(message) {
 // Listen for messages from popup or background script
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     console.log("Noticing Game: Message received in content script:", request);
+
+    // Verificar contexto al inicio
+    if (!isExtensionContextValid()) {
+        handleInvalidContext();
+        sendResponse({
+            success: false,
+            error: "Extension context invalidated. Please refresh the page."
+        });
+        return;
+    }
 
     if (request.action === "analyzeSubtitles") {
         console.log("Noticing Game: Starting analysis at popup request");
@@ -222,27 +297,42 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
             );
         }
 
-        if (typeof SP.analyzeSubtitles === "function") {
+        if (SP && typeof SP.analyzeSubtitles === "function") {
             SP.analyzeSubtitles()
                 .then((result) => {
                     console.log(
                         "Noticing Game: Sending response to popup:",
                         result,
                     );
-                    sendResponse(result);
+                    // Verificar contexto antes de enviar respuesta
+                    if (isExtensionContextValid()) {
+                        sendResponse(result);
+                    } else {
+                        handleInvalidContext();
+                    }
                 })
                 .catch((error) => {
                     console.error("Noticing Game: Analysis error:", error);
-                    sendResponse({
-                        success: false,
-                        error: error.message || "Unknown error during analysis",
-                    });
+                    // Verificar contexto antes de enviar respuesta
+                    if (isExtensionContextValid()) {
+                        sendResponse({
+                            success: false,
+                            error: error.message || "Unknown error during analysis",
+                        });
+                    } else {
+                        handleInvalidContext();
+                    }
                 });
         } else {
-            sendResponse({
-                success: false,
-                error: "Analysis function not available",
-            });
+            console.error("Noticing Game: SubtitleProcessor not available");
+            if (isExtensionContextValid()) {
+                sendResponse({
+                    success: false,
+                    error: "Subtitle processor not available. Please reload the page.",
+                });
+            } else {
+                handleInvalidContext();
+            }
         }
         return true; // Indicate that the response will be sent asynchronously
     }
@@ -252,12 +342,22 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         // Usar la función simplificada
         const result = showFloatingPanel();
         console.log("Noticing Game: Show panel result:", result);
-        sendResponse(result);
+        
+        // Verificar contexto antes de enviar respuesta
+        if (isExtensionContextValid()) {
+            sendResponse(result);
+        } else {
+            handleInvalidContext();
+        }
         return true;
     }
 
     // Respuesta por defecto para mensajes no reconocidos
-    sendResponse({ success: false, error: "Unknown action" });
+    if (isExtensionContextValid()) {
+        sendResponse({ success: false, error: "Unknown action" });
+    } else {
+        handleInvalidContext();
+    }
     return true;
 });
 

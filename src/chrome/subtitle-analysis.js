@@ -1,5 +1,53 @@
 // Módulo para analizar subtítulos y encontrar palabras de frecuencia
 window.SubtitleAnalysis = (function () {
+  // Función para verificar si el contexto de la extensión es válido
+  function isExtensionContextValid() {
+    try {
+      // Verificar si chrome y chrome.runtime están disponibles
+      if (!chrome || !chrome.runtime) {
+        return false;
+      }
+
+      // Verificar si el runtime id está disponible (indica contexto válido)
+      if (!chrome.runtime.id) {
+        return false;
+      }
+
+      // Verificar si lastError indica que el contexto se invalidó
+      if (chrome.runtime.lastError) {
+        console.warn(
+          "Chrome runtime error detected:",
+          chrome.runtime.lastError.message,
+        );
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.warn("Extension context validation error:", error);
+      return false;
+    }
+  }
+
+  // Función para manejar contexto invalidado
+  function handleInvalidContext() {
+    console.log(
+      "Extension context invalidated in SubtitleAnalysis, cleaning up...",
+    );
+
+    // Notificar al usuario si es posible
+    try {
+      const statusElements = document.querySelectorAll(".noticing-game-status");
+      statusElements.forEach((element) => {
+        element.textContent =
+          "Extension reloaded. Please refresh the page to continue using Noticing Game.";
+        element.style.color = "orange";
+      });
+    } catch (error) {
+      console.warn("Could not update status elements:", error);
+    }
+  }
+
   // Función para analizar subtítulos y encontrar palabras de la lista
   async function analyzeSubtitles() {
     console.log("Noticing Game: Starting fresh subtitle analysis");
@@ -23,123 +71,155 @@ window.SubtitleAnalysis = (function () {
     }
 
     // Forzar un nuevo análisis descartando resultados anteriores
-    window.lastAnalyzedVideoId = null; // Esto fuerza a tratar este video como nuevo
+    window.lastAnalyzedVideoId = null;
 
-    // Obtener la lista de palabras de frecuencia
     return new Promise((resolve) => {
-      chrome.storage.local.get(["frequencyWordList"], async function (result) {
-        if (
-          !result.frequencyWordList ||
-          result.frequencyWordList.length === 0
-        ) {
-          resolve({
-            success: false,
-            error:
-              "No word list configured. Please set it up in the extension.",
-          });
-          return;
-        }
+      // Verificar contexto antes de usar Chrome APIs
+      if (!isExtensionContextValid()) {
+        handleInvalidContext();
+        resolve({
+          success: false,
+          error: "Extension context invalidated. Please refresh the page.",
+        });
+        return;
+      }
 
-        console.log(
-          `Noticing Game: Word list loaded, contains ${result.frequencyWordList.length} words`,
-        );
-        const frequencyWordList = result.frequencyWordList;
+      try {
+        chrome.storage.local.get(
+          ["frequencyWordList"],
+          async function (result) {
+            try {
+              // Verificar contexto nuevamente en el callback
+              if (!isExtensionContextValid()) {
+                handleInvalidContext();
+                resolve({
+                  success: false,
+                  error: "Extension context invalidated during analysis.",
+                });
+                return;
+              }
 
-        try {
-          // IMPORTANTE: Forzar nueva extracción de subtítulos ignorando cualquier caché
-          const subtitlesResult =
-            await window.SubtitleExtraction.getYouTubeSubtitles();
+              if (
+                !result.frequencyWordList ||
+                result.frequencyWordList.length === 0
+              ) {
+                resolve({
+                  success: false,
+                  error:
+                    "No word list configured. Please set it up in the extension.",
+                });
+                return;
+              }
 
-          if (!subtitlesResult.success) {
-            resolve({
-              success: false,
-              error: subtitlesResult.error || "Could not obtain subtitles",
-            });
-            return;
-          }
+              console.log(
+                `Noticing Game: Word list loaded, contains ${result.frequencyWordList.length} words`,
+              );
+              const frequencyWordList = result.frequencyWordList;
 
-          const subtitles = subtitlesResult.subtitles;
-          console.log(
-            `Noticing Game: Subtitles obtained, processing ${subtitles.length} segments`,
-          );
+              try {
+                const subtitlesResult =
+                  await window.SubtitleExtraction.getYouTubeSubtitles();
 
-          // Combinar todos los subtítulos en un solo texto
-          let fullText = subtitles
-            .join(" ")
-            .replace(/<[^>]*>/g, "") // Eliminar etiquetas HTML
-            .toLowerCase();
+                if (!subtitlesResult.success) {
+                  resolve({
+                    success: false,
+                    error:
+                      subtitlesResult.error || "Could not obtain subtitles",
+                  });
+                  return;
+                }
 
-          // Mejorar procesamiento de palabras para detectar correctamente palabras junto a comillas
-          // Paso 1: Pre-procesar el texto original para normalizar espacios entre puntuación
-          let processedText = fullText;
+                const subtitles = subtitlesResult.subtitles;
+                console.log(
+                  `Noticing Game: Subtitles obtained, processing ${subtitles.length} segments`,
+                );
 
-          // Insertar espacios alrededor de cada signo de puntuación
-          processedText = processedText.replace(
-            /([.,?!;'"\(\)\[\]{}:\/\\])/g,
-            " $1 ",
-          );
+                // Combinar todos los subtítulos en un solo texto
+                let fullText = subtitles.join(" ").replace(/<[^>]*>/g, ""); // Eliminar etiquetas HTML
 
-          // Normalizar espacios (eliminar múltiples espacios)
-          processedText = processedText
-            .replace(/\s+/g, " ")
-            .trim()
-            .toLowerCase();
+                // Procesar usando el nuevo TextProcessing
+                const words = window.TextProcessing.extractCleanWords(fullText);
+                console.log(
+                  `Noticing Game: Extracted ${words.length} total words in the video`,
+                );
 
-          // Extraer solo las palabras, excluyendo los signos de puntuación
-          const words = processedText
-            .split(" ")
-            .filter(
-              (w) => w.length > 0 && !/^[.,?!;'"\(\)\[\]{}:\/\\]+$/.test(w),
-            );
+                // Contador de palabras
+                const wordCounts = {};
 
-          console.log(
-            `Noticing Game: Extracted ${words.length} total words in the video`,
-          );
+                // Contar palabras y contracciones que están en la lista de frecuencia
+                let matchCount = 0;
+                words.forEach((word) => {
+                  if (frequencyWordList.includes(word)) {
+                    wordCounts[word] = (wordCounts[word] || 0) + 1;
+                    matchCount++;
+                  }
+                });
 
-          // Contador de palabras
-          const wordCounts = {};
+                console.log(
+                  `Noticing Game: Found ${Object.keys(wordCounts).length} unique words/contractions from the list (${matchCount} total matches)`,
+                );
 
-          // Contar palabras que están en la lista de frecuencia
-          let matchCount = 0;
-          words.forEach((word) => {
-            if (frequencyWordList.includes(word)) {
-              wordCounts[word] = (wordCounts[word] || 0) + 1;
-              matchCount++;
+                // Convertir a array de resultados
+                const results = Object.keys(wordCounts).map((word) => ({
+                  word: word,
+                  count: wordCounts[word],
+                }));
+
+                // Ordenar por frecuencia (mayor a menor)
+                results.sort((a, b) => b.count - a.count);
+
+                console.log(`Noticing Game: Analysis completed successfully`);
+
+                // Al finalizar, actualizar el ID del video analizado
+                window.lastAnalyzedVideoId = currentVideoId;
+
+                resolve({
+                  success: true,
+                  words: results,
+                  language: subtitlesResult.language,
+                  source: subtitlesResult.source || "page",
+                });
+              } catch (error) {
+                console.error("Noticing Game: Error in analysis:", error);
+                if (
+                  error.message &&
+                  error.message.includes("Extension context invalidated")
+                ) {
+                  handleInvalidContext();
+                }
+                resolve({
+                  success: false,
+                  error: error.message || "Unknown error during analysis",
+                });
+              }
+            } catch (error) {
+              console.error("Error in analyzeSubtitles callback:", error);
+              if (
+                error.message &&
+                error.message.includes("Extension context invalidated")
+              ) {
+                handleInvalidContext();
+              }
+              resolve({
+                success: false,
+                error: "Error accessing storage: " + error.message,
+              });
             }
-          });
-
-          console.log(
-            `Noticing Game: Found ${Object.keys(wordCounts).length} unique words from the list (${matchCount} total matches)`,
-          );
-
-          // Convertir a array de resultados
-          const results = Object.keys(wordCounts).map((word) => ({
-            word: word,
-            count: wordCounts[word],
-          }));
-
-          // Ordenar por frecuencia (mayor a menor)
-          results.sort((a, b) => b.count - a.count);
-
-          console.log(`Noticing Game: Analysis completed successfully`);
-
-          // Al finalizar, actualizar el ID del video analizado
-          window.lastAnalyzedVideoId = currentVideoId;
-
-          resolve({
-            success: true,
-            words: results,
-            language: subtitlesResult.language,
-            source: subtitlesResult.source || "page",
-          });
-        } catch (error) {
-          console.error("Noticing Game: Error in analysis:", error);
-          resolve({
-            success: false,
-            error: error.message || "Unknown error during analysis",
-          });
+          },
+        );
+      } catch (error) {
+        console.error("Error in analyzeSubtitles:", error);
+        if (
+          error.message &&
+          error.message.includes("Extension context invalidated")
+        ) {
+          handleInvalidContext();
         }
-      });
+        resolve({
+          success: false,
+          error: "Error initializing analysis: " + error.message,
+        });
+      }
     });
   }
 
