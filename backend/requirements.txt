@@ -1,0 +1,19 @@
+# Noticing Game Backend Dependencies
+# Python requirements for the subtitle extraction server
+
+# Web framework
+Flask>=2.3.0,<3.0.0
+
+# CORS support for cross-origin requests
+Flask-CORS>=4.0.0,<5.0.0
+
+# YouTube subtitle extraction
+yt-dlp>=2023.7.6
+
+# Additional useful dependencies
+requests>=2.31.0,<3.0.0
+urllib3>=1.26.16,<3.0.0
+
+# Development and testing (optional)
+pytest>=7.4.0,<8.0.0
+pytest-flask>=1.2.0,<2.0.0

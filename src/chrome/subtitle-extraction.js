@@ -1,25 +1,206 @@
 // Módulo para extraer y parsear subtítulos de YouTube
 window.SubtitleExtraction = (function () {
+    // URL del servidor backend
+    const BACKEND_URL = "http://localhost:5000";
+
+    // Estado del servidor
+    let serverStatus = {
+        isOnline: false,
+        lastCheck: 0,
+        checkInterval: 5000, // 5 segundos
+        hasShownOfflineMessage: false,
+    };
+
+    // Función para verificar si el servidor está en línea
+    async function checkServerStatus() {
+        const now = Date.now();
+
+        // Evitar verificaciones muy frecuentes
+        if (now - serverStatus.lastCheck < serverStatus.checkInterval) {
+            return serverStatus.isOnline;
+        }
+
+        try {
+            const response = await fetch(`${BACKEND_URL}/`, {
+                method: "GET",
+                timeout: 3000,
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                serverStatus.isOnline = data.status === "running";
+                serverStatus.lastCheck = now;
+
+                if (
+                    serverStatus.isOnline &&
+                    serverStatus.hasShownOfflineMessage
+                ) {
+                    showServerOnlineMessage();
+                    serverStatus.hasShownOfflineMessage = false;
+                }
+
+                return serverStatus.isOnline;
+            }
+        } catch (error) {
+            console.log("Server check failed:", error.message);
+        }
+
+        serverStatus.isOnline = false;
+        serverStatus.lastCheck = now;
+        return false;
+    }
+
+    // Función para mostrar mensaje cuando el servidor vuelve a estar online
+    function showServerOnlineMessage() {
+        const statusElements = document.querySelectorAll(
+            ".noticing-game-status",
+        );
+        statusElements.forEach((element) => {
+            const originalText = element.textContent;
+            element.textContent =
+                "✅ Backend server is now online! You can use the extension normally.";
+            element.style.color = "green";
+
+            setTimeout(() => {
+                element.textContent = originalText;
+                element.style.color = "";
+            }, 4000);
+        });
+    }
+
+    // Función para mostrar guía detallada al usuario
+    function showServerSetupGuide() {
+        if (serverStatus.hasShownOfflineMessage) {
+            return; // No mostrar múltiples veces
+        }
+
+        serverStatus.hasShownOfflineMessage = true;
+
+        const setupInstructions = `
+🎮 NOTICING GAME - SETUP REQUIRED
+
+The subtitle extraction server is not running. To use this extension, you need to start the backend server:
+
+📋 QUICK SETUP:
+
+1️⃣ DOWNLOAD PYTHON (if not installed):
+   • Visit: https://www.python.org/downloads/
+   • ✅ IMPORTANT: Check "Add Python to PATH"
+
+2️⃣ START THE SERVER:
+   • Navigate to the extension's backend folder
+   • Run one of these commands:
+
+   Windows:
+   start_server.bat
+
+   Mac/Linux:
+   ./start_server.sh --auto-install
+
+   Or manually:
+   python subtitle_server.py
+
+3️⃣ VERIFY:
+   • Server should start on http://localhost:5000
+   • Keep the server running while using the extension
+
+💡 ALTERNATIVE SETUP:
+   • Double-click start_server.py
+   • Or run: python start_server.py --auto-install
+
+⚠️  NEED HELP?
+   • Check the README.md file in the backend folder
+   • The server must run locally on your computer
+   • This is required due to YouTube's security restrictions
+
+Once the server is running, refresh this page and try again!
+        `.trim();
+
+        alert(setupInstructions);
+
+        // También mostrar en la UI de la extensión si está disponible
+        const statusElements = document.querySelectorAll(
+            ".noticing-game-status",
+        );
+        statusElements.forEach((element) => {
+            element.innerHTML = `
+                <div style="color: orange; font-weight: bold; margin-bottom: 10px;">
+                    🔧 Backend Server Required
+                </div>
+                <div style="font-size: 12px; line-height: 1.4;">
+                    The subtitle extraction server is not running.<br>
+                    <strong>Quick setup:</strong><br>
+                    1. Install Python (python.org)<br>
+                    2. Run: start_server.bat (Windows) or start_server.sh (Mac/Linux)<br>
+                    3. Refresh this page<br><br>
+                    <em>Check the extension's backend folder for detailed instructions.</em>
+                </div>
+            `;
+        });
+    }
+
+    // Función para mostrar estado del servidor en la UI
+    function updateServerStatusInUI(isOnline) {
+        const statusElements = document.querySelectorAll(
+            ".noticing-game-status",
+        );
+
+        if (!isOnline) {
+            statusElements.forEach((element) => {
+                if (!element.textContent.includes("Backend Server Required")) {
+                    element.innerHTML = `
+                        <div style="color: orange;">
+                            ⚠️ Backend server offline - Click "Play" for setup instructions
+                        </div>
+                    `;
+                }
+            });
+        }
+    }
+
     // Función para precargar subtítulos con timestamps
     async function preloadSubtitlesWithTimestamps() {
         try {
-            // Obtener los datos de subtítulos desde el reproductor
-            const playerResponse =
-                await extractSubtitlesFromPlayerDataWithTimestamps();
+            // Obtener el ID del video actual
+            const videoId = window.YouTubeVideoUtils.getYouTubeVideoId();
+            if (!videoId) {
+                throw new Error("No video ID found");
+            }
+
+            const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+            // Llamar al backend para obtener subtítulos
+            const response = await fetch(`${BACKEND_URL}/extract-subtitles`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ url: videoUrl }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Backend server error: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.error || "Backend extraction failed");
+            }
 
             // Almacenar subtítulos organizados por timestamps para acceso rápido
             const subtitlesMap = {};
 
-            if (playerResponse && playerResponse.subtitles) {
-                // Organizar subtítulos por tiempo
-                playerResponse.subtitles.forEach((subtitle) => {
-                    if (subtitle.startTime !== undefined) {
-                        subtitlesMap[subtitle.startTime] = subtitle.text;
+            if (data.subtitles && Array.isArray(data.subtitles)) {
+                // Organizar subtítulos por tiempo de inicio
+                data.subtitles.forEach((subtitle) => {
+                    if (subtitle.start !== undefined) {
+                        subtitlesMap[subtitle.start] = subtitle.text;
                     }
                 });
 
                 console.log(
-                    `Noticing Game: Preloaded ${Object.keys(subtitlesMap).length} subtitles with timestamps`,
+                    `Noticing Game: Preloaded ${Object.keys(subtitlesMap).length} subtitles with timestamps from backend`,
                 );
                 return subtitlesMap;
             }
@@ -27,6 +208,15 @@ window.SubtitleExtraction = (function () {
             return null;
         } catch (error) {
             console.error("Error preloading subtitles with timestamps:", error);
+            // Si el backend no está disponible, mostrar un mensaje claro
+            if (
+                error.message.includes("Failed to fetch") ||
+                error.message.includes("ECONNREFUSED")
+            ) {
+                console.error(
+                    "Backend server appears to be offline. Please start the subtitle server.",
+                );
+            }
             return null;
         }
     }
@@ -195,35 +385,171 @@ window.SubtitleExtraction = (function () {
     async function getYouTubeSubtitles() {
         try {
             console.log(
-                "Noticing Game: Attempting to extract from player data...",
+                "Noticing Game: Attempting to extract subtitles using backend server...",
             );
-            // Verificar explícitamente si hay subtítulos antes de intentar extraerlos
-            const ccButton = document.querySelector(".ytp-subtitles-button");
 
-            // Si no hay botón de subtítulos o no hay subtítulos disponibles
-            if (
-                !ccButton ||
-                !document.querySelector(".ytp-caption-window-container")
-            ) {
-                // Mostrar alerta para que el usuario sepa qué hacer
-                alert(
-                    "This video doesn't have subtitles. Please choose a video with subtitles (either auto-generated or manual) to use Noticing Game.",
+            // Verificar estado del servidor primero
+            const isServerOnline = await checkServerStatus();
+
+            if (!isServerOnline) {
+                console.log(
+                    "Backend server is offline, showing setup guide...",
                 );
-                throw new Error("No subtitles available for this video");
-            }
-
-            return await extractSubtitlesFromPlayerData();
-        } catch (error) {
-            console.log(
-                "Noticing Game: Player data method failed, attempting DOM capture...",
-            );
-            try {
-                return await extractSubtitlesFromPage();
-            } catch (domError) {
+                showServerSetupGuide();
+                updateServerStatusInUI(false);
                 throw new Error(
-                    `Could not obtain subtitles by any method: ${error.message}, ${domError.message}`,
+                    "Backend server is not running. Please start the subtitle extraction server.",
                 );
             }
+
+            // Obtener el ID del video actual
+            const videoId = window.YouTubeVideoUtils.getYouTubeVideoId();
+            if (!videoId) {
+                throw new Error("No video ID found");
+            }
+
+            const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+            // Llamar al backend para obtener subtítulos
+            const response = await fetch(`${BACKEND_URL}/extract-subtitles`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ url: videoUrl }),
+                timeout: 30000, // 30 segundos timeout
+            });
+
+            if (!response.ok) {
+                if (response.status === 400) {
+                    const errorData = await response.json();
+                    throw new Error(
+                        errorData.error || "Bad request to backend",
+                    );
+                }
+                throw new Error(`Backend server error: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (!data.success) {
+                // Si el backend dice que no hay subtítulos, mostrar alerta
+                if (
+                    data.error &&
+                    data.error.includes("No subtitles available")
+                ) {
+                    alert(
+                        "This video doesn't have subtitles. Please choose a video with subtitles (either auto-generated or manual) to use Noticing Game.",
+                    );
+                }
+                throw new Error(data.error || "Backend extraction failed");
+            }
+
+            console.log(
+                `Noticing Game: Successfully extracted ${data.subtitle_count} subtitles from backend`,
+            );
+            console.log(
+                `Video: ${data.video_title} (Language: ${data.language}, Source: ${data.source})`,
+            );
+
+            // Convertir formato del backend al formato esperado por la extensión
+            const subtitles = data.subtitles.map((sub) => sub.text);
+
+            // También procesar para detección de palabras en tiempo real
+            if (data.subtitles && Array.isArray(data.subtitles)) {
+                chrome.storage.local.get(
+                    ["frequencyWordList"],
+                    function (result) {
+                        if (
+                            result.frequencyWordList &&
+                            result.frequencyWordList.length > 0
+                        ) {
+                            const frequencyWordList = result.frequencyWordList;
+
+                            data.subtitles.forEach((subtitle) => {
+                                // Usar la función centralizada para procesar el texto
+                                if (window.TextProcessing) {
+                                    window.TextProcessing.processSubtitleTextForWordDetection(
+                                        subtitle.text,
+                                        frequencyWordList,
+                                        function (word) {
+                                            // Usar la función del módulo de detección de palabras
+                                            if (window.WordDetection) {
+                                                // Usar el timestamp del subtítulo convertido a milisegundos
+                                                const timestamp = Math.floor(
+                                                    subtitle.start * 1000,
+                                                );
+                                                window.WordDetection.trackWordAppearance(
+                                                    word,
+                                                    timestamp,
+                                                );
+                                                console.log(
+                                                    `Word detected from backend: ${word} at ${subtitle.start}s`,
+                                                );
+                                            }
+                                        },
+                                    );
+                                }
+                            });
+                        }
+                    },
+                );
+            }
+
+            return {
+                success: true,
+                subtitles: subtitles,
+                language: data.language,
+                source: "backend-yt-dlp",
+                video_title: data.video_title,
+                subtitle_count: data.subtitle_count,
+            };
+        } catch (error) {
+            console.error("Noticing Game: Backend extraction failed:", error);
+
+            // Si el backend no está disponible, mostrar guía y actualizar estado
+            if (
+                error.message.includes("Failed to fetch") ||
+                error.message.includes("ECONNREFUSED") ||
+                error.message.includes("Backend server is not running")
+            ) {
+                console.log("Backend server appears to be offline.");
+                serverStatus.isOnline = false;
+
+                if (!serverStatus.hasShownOfflineMessage) {
+                    showServerSetupGuide();
+                }
+                updateServerStatusInUI(false);
+
+                // Intentar método de respaldo (DOM capture) como último recurso
+                try {
+                    console.log("Attempting fallback DOM extraction...");
+                    const fallbackResult = await extractSubtitlesFromPage();
+
+                    // Mostrar advertencia sobre el método de respaldo
+                    const statusElements = document.querySelectorAll(
+                        ".noticing-game-status",
+                    );
+                    statusElements.forEach((element) => {
+                        element.innerHTML = `
+                            <div style="color: orange; font-weight: bold;">
+                                ⚠️ Using fallback mode - Limited functionality
+                            </div>
+                            <div style="font-size: 12px;">
+                                For full features, please start the backend server
+                            </div>
+                        `;
+                    });
+
+                    return fallbackResult;
+                } catch (fallbackError) {
+                    throw new Error(
+                        `Backend server offline. Please start the server for full functionality. Setup guide has been shown.`,
+                    );
+                }
+            }
+
+            throw error;
         }
     }
 
@@ -367,6 +693,8 @@ window.SubtitleExtraction = (function () {
                 subtitles.push(text);
 
                 // Usar el procesamiento centralizado de texto
+                // Note: Word detection is now handled in getYouTubeSubtitles for backend extraction
+                // This fallback method still processes words in real-time
                 chrome.storage.local.get(
                     ["frequencyWordList"],
                     function (result) {
@@ -388,7 +716,7 @@ window.SubtitleExtraction = (function () {
                                                 word,
                                             );
                                             console.log(
-                                                `Word detected: ${word}`,
+                                                `Word detected (fallback): ${word}`,
                                             );
                                         }
                                     },
@@ -440,6 +768,7 @@ window.SubtitleExtraction = (function () {
                                         result.frequencyWordList;
 
                                     // Usar la función centralizada para procesar el texto
+                                    // Note: This is fallback DOM capture when backend is not available
                                     if (window.TextProcessing) {
                                         window.TextProcessing.processSubtitleTextForWordDetection(
                                             currentText,
@@ -450,7 +779,7 @@ window.SubtitleExtraction = (function () {
                                                         word,
                                                     );
                                                     console.log(
-                                                        `Word captured from DOM: ${word}`,
+                                                        `Word captured from DOM (fallback): ${word}`,
                                                     );
                                                 }
                                             },
@@ -559,6 +888,16 @@ window.SubtitleExtraction = (function () {
         });
     }
 
+    // Verificar estado del servidor periódicamente
+    setInterval(async () => {
+        if (!serverStatus.isOnline) {
+            await checkServerStatus();
+            if (serverStatus.isOnline) {
+                updateServerStatusInUI(true);
+            }
+        }
+    }, 10000); // Verificar cada 10 segundos si está offline
+
     return {
         preloadSubtitlesWithTimestamps,
         extractSubtitlesFromPlayerDataWithTimestamps,
@@ -567,5 +906,7 @@ window.SubtitleExtraction = (function () {
         extractSubtitlesFromPlayerData,
         extractSubtitlesFromPage,
         parseSubtitleXml,
+        checkServerStatus,
+        getServerStatus: () => serverStatus,
     };
 })();

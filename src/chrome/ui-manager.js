@@ -323,7 +323,7 @@ window.UIManager = (function () {
               </ol>
 
               <h3>About Noticing Game</h3>
-              <p><strong>Version:</strong> 0.2.1</p>
+              <p><strong>Version:</strong> 0.1.2</p>
               <p><strong>Developed by:</strong> Rafael Hernandez Bustamante</p>
               <p><strong>Contact:</strong> <a href="https://www.linkedin.com/in/rafaelhernandezbustamante" target="_blank">LinkedIn</a></p>
               <p><strong>Project:</strong> <a href="https://github.com/Rudull" target="_blank">GitHub</a></p>
