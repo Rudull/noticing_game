@@ -49,7 +49,7 @@ Noticing Game consists of two parts:
 
 **Desktop App Example:**
 
-![The game interface](assets/noticin-game-server.png)
+![The server interface](assets/noticing_game_server.png)
 
 ---
 

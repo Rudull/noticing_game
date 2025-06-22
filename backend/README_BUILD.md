@@ -8,9 +8,9 @@ This directory contains scripts to create standalone executables for the Noticin
 
 Below are screenshots of the Noticing Game desktop application and its settings window for visual reference:
 
-![The game interface](assets/noticin-game-server.png)
+![The server interface](assets/noticing_game_server.png)
 
-![The game interface](assets/noticin-game-server-settings.png)
+![The server settings interface](assets/noticig_game_server_settings.png)
 
 ---
 
