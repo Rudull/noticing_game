@@ -239,7 +239,25 @@ def home():
     return jsonify({
         'status': 'running',
         'service': 'Noticing Game Subtitle Server',
-        'version': '1.0.0',
+        'version': '0.1.0',
+        'timestamp': datetime.now().isoformat()
+    })
+
+@app.route('/info', methods=['GET'])
+def info():
+    """Server information endpoint"""
+    return jsonify({
+        'name': 'Noticing Game - Subtitle Extraction Server',
+        'version': '0.1.0',
+        'description': 'Backend server using yt-dlp to extract YouTube subtitles for the Noticing Game extension',
+        'author': 'Rafael Hernandez Bustamante',
+        'license': 'GNU General Public License v3.0 (GPL-3.0)',
+        'repository': 'https://github.com/Rudull/noticing-game',
+        'endpoints': {
+            '/': 'Health check',
+            '/info': 'Server information',
+            '/extract-subtitles': 'Extract subtitles from YouTube video (POST/GET)'
+        },
         'timestamp': datetime.now().isoformat()
     })
 

@@ -5,72 +5,112 @@
 ![The game interface](assets/noticing_game_1.png)
 
 ## Description
-This browser extension analyzes YouTube video subtitles and detects words that are present in a configurable frequency word list. It's a useful tool for language learners, teachers, or anyone interested in analyzing vocabulary used in videos.
+
+**Noticing Game** is an innovative browser extension that transforms YouTube into an interactive language learning tool. It automatically analyzes video subtitles in real time, highlights words from customizable frequency lists, and turns vocabulary practice into a fun, engaging game.
+Whether you're a language learner, teacher, or simply curious about the vocabulary used in videos, Noticing Game helps you notice, track, and master the most important words as you watch.
+
+- Instantly see which frequent words appear in any video
+- Play by clicking words as you notice them in the subtitles
+- Track your progress and challenge yourself to improve
+
+Unlock a new way to learn languages—directly on YouTube!
+
+---
+
+## How It Works
+
+Noticing Game consists of two parts:
+
+1. **Chrome Extension:**
+   Provides the interactive game and analyzes subtitles on YouTube.
+
+2. **Backend Subtitle Server:**
+   A small Python server that extracts subtitles from YouTube videos using `yt-dlp` and provides them to the extension.
+
+> **Note:** The backend server is required for full functionality.
+> For installation and advanced usage, see [`backend/README.md`](backend/README.md) and [`backend/README_BUILD.md`](backend/README_BUILD.md).
+
+---
+
+## Quick Start
+
+### 1. Install and Run the Backend Server
+
+- Download or build the backend (see backend README for details).
+- Install dependencies and run:
+  ```bash
+  cd backend
+  pip install -r requirements.txt
+  python subtitle_server.py
+  ```
+- The server should run at `http://localhost:5000`.
+
+**Desktop App Example:**
+
+![Noticing Game Server Main Window](assets/noticin-game-server.png)
+
+---
+
+### 2. Install the Extension
+
+- Clone this repository.
+- Go to `chrome://extensions/` in Chrome.
+- Enable "Developer mode".
+- Click "Load unpacked" and select this project folder.
+
+---
+
+### 3. Play the Game
+
+1. Open a YouTube video with subtitles.
+2. Click the extension icon and then "Noticing Game".
+3. Play by clicking words as you notice them in the video.
+
+---
 
 ## Features
-- Analyzes YouTube video subtitles in real-time
-- Shows detected words from the frequency list
-- Displays the frequency of each word in the video
-- Allows you to configure your own frequency word list
-- Contains a default list of common words in English
 
-## How to Use
-1. Install the extension in your browser
-2. Navigate to a YouTube video with subtitles
-3. Click the extension icon in the toolbar
-4. Click "Noticing Game"
-5. Observe the detected words and their frequency
+- Real-time subtitle analysis on YouTube
+- Detects and displays frequent words from your chosen list
+- Customizable frequency word lists
+- Default list of common English words
+- Desktop backend app for easy server management
 
-## How to Play
-1. Watch YouTube videos with subtitles
-2. Click "Play" to detect frequent words
-3. When you notice a word from the list being said in the video, quickly click it
-4. You get points for correctly noticing words. Be careful! You'll lose points if you click words that haven't appeared recently.
-
-### Visual Examples
-
-Here are some screenshots showing the extension in action:
-
-**The game panel on a YouTube video:**
-![The game panel on a YouTube video](assets/noticing_game_2.png)
-
-
-## Customization
-You can customize your own frequency word list in the extension's settings tab.
+---
 
 ## Requirements
-- The video must have available subtitles
-- The extension works best with videos that have English subtitles
 
-## Limitations
-- Only analyzes publicly available subtitles
-- Cannot access automatically generated YouTube subtitles in real-time (API limitation)
+- YouTube video with subtitles
+- Backend server running locally (see above)
+- Chrome browser
 
-## Installation for Development
-1. Clone this repository
-2. Open Chrome and navigate to `chrome://extensions/`
-3. Enable "Developer mode"
-4. Click "Load unpacked"
-5. Select this project folder
+---
 
-## Contributions
-Contributions are welcome. If you want to improve this extension, follow these steps:
-1. Fork the repository
-2. Create a branch for your feature or fix
-3. Submit a pull request
+## Troubleshooting
+
+- If you see a message about the "Subtitle Server" not running, make sure you have started the backend.
+- For backend/server issues, see [`backend/README.md`](backend/README.md).
+
+---
+
+## More Information
+
+- **Backend installation, configuration, packaging, and advanced options:**
+  See [`backend/README.md`](backend/README.md) and [`backend/README_BUILD.md`](backend/README_BUILD.md).
+
+---
 
 ## License
-This project is licensed under the GNU General Public License v3.0 (GPL-3.0).\n
-The GPL-3.0 is a strong copyleft license that requires anyone who distributes your code or a derivative work to make the source available under the same terms. This license is designed to ensure that all modified and extended versions of the program remain free software.\n
-Key points:
-1. Anyone can copy, modify and distribute this software.
-2. You must include the license and copyright notice with each distribution.
-3. You can use this software privately or commercially.
-4. If you modify the code, you must indicate changes and distribute it under the same license.
-5. This software is provided without warranty.\n
-For more details, see the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html).\n
+
+This project is licensed under the GNU General Public License v3.0 (GPL-3.0).
+See [GNU GPL v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html) for details.
+
+---
+
 ## About
-- Version: 0.1.0
+
+- Add-on Version: 0.2.2
+- Backend Server Version: 0.1.0
 - Developed by: Rafael Hernandez Bustamante
 - Contact: www.linkedin.com/in/rafaelhernandezbustamante
 - Project: https://github.com/Rudull

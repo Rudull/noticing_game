@@ -1,8 +1,26 @@
-## Road Map
+## Roadmap
 
-1. Las palabras adyacentes a comillas simples o dobles no permiten ser notadas correctamente. Es decir, si una palabra que hace parte de una oración que está entre comillas y es una de las palabras del listado a notar, si el usuario hace clic para marcar que notó la palabra en el momento correcto, el usuario es penalizado. Esto es incorrecto.
-Por ejemplo para la frase:
-<subtitles>
-“Where are all the people?” the little prince asked
-<subtitles>
-Si la palabra Where es una de las palabras en el listado de palabras a notar, entonces por el hecho de estar presidida de comillas dobles no es tenida en cuenta como una palabra a notar, y si el usuario la marca como notada es penalizado.
+The following roadmap outlines planned features and improvements for Noticing Game:
+
+### Short Term
+
+- [ ] **Multi-language word lists:** Add curated frequency lists for more languages (Spanish, French, German, etc.)
+- [ ] **Improved subtitle extraction:** Enhance backend to better handle auto-generated and region-locked subtitles.
+- [ ] **User progress tracking:** Persistent stats, streaks, and achievements.
+- [ ] **UI/UX enhancements:** Smoother animations, accessibility improvements, and more responsive design.
+- [ ] **One-click backend installer:** Simplify backend setup for non-technical users.
+
+### Medium Term
+
+- [ ] **Mobile browser support:** Explore support for mobile Chrome/Edge/Firefox.
+- [ ] **Cloud backend option:** Optional hosted backend for users who can't run a local server.
+- [ ] **Community word lists:** Allow users to share and import lists from a central repository.
+- [ ] **Advanced analytics:** Visualize vocabulary growth and learning patterns.
+
+### Long Term
+
+- [ ] **Integration with language learning platforms (e.g., Anki, Duolingo)**
+- [ ] **Gamification:** Badges, leaderboards, and social features.
+- [ ] **AI-powered suggestions:** Personalized word recommendations based on user progress.
+
+---

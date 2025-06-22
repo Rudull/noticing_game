@@ -35,8 +35,10 @@
     right: 20px;
     width: 450px; /* Ancho inicial */
     height: 460px; /* Altura inicial */
-    min-width: 200px; /* Ancho mínimo */
-    min-height: 150px; /* Altura mínima */
+    min-width: 300px; /* Ancho mínimo aumentado para matrices más grandes */
+    min-height: 200px; /* Altura mínima aumentada */
+    max-width: 90vw; /* Máximo ancho responsivo */
+    max-height: 90vh; /* Máxima altura responsiva */
     background-color: var(--panel-bg);
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -195,7 +197,8 @@
 
 .noticing-game-content {
     padding: 15px;
-    max-height: 400px;
+    max-height: calc(100vh - 200px); /* Altura dinámica basada en viewport */
+    min-height: 300px;
     overflow-y: auto;
 }
 
@@ -255,46 +258,57 @@
 /* Estilos para los botones de palabras */
 .noticing-game-buttons-container {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 8px;
+    grid-template-columns: repeat(
+        5,
+        1fr
+    ); /* Valor por defecto, se sobrescribe dinámicamente */
+    gap: clamp(4px, 1vw, 8px); /* Gap responsivo */
     margin-top: 15px;
+    grid-auto-rows: minmax(35px, auto);
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .noticing-game-word-button {
     background-color: var(--panel-bg);
     color: var(--text-color);
     border: 1px solid var(--primary-color);
-    border-radius: 15px;
-    padding: 5px 8px;
-    font-size: 14px;
+    border-radius: clamp(8px, 2vw, 15px); /* Border radius responsivo */
+    padding: clamp(3px, 1vw, 8px);
+    /* font-size eliminado para que JS lo controle dinámicamente */
     cursor: pointer;
     transition: all 0.2s ease;
-    min-height: 40px;
+    min-height: clamp(30px, 5vw, 45px); /* Altura mínima responsiva */
     width: 100%;
     display: flex;
-    flex-direction: column; /* Cambiado a columna para permitir puntos debajo */
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     text-align: center;
     overflow: hidden;
     text-overflow: ellipsis;
-    position: relative; /* Para posicionar los puntos correctamente */
+    position: relative;
+    word-break: break-word;
+    line-height: 1.1;
+    box-sizing: border-box;
 }
 
 /* Estilos para los puntos de progreso */
 .progress-dots {
     display: flex;
     justify-content: center;
-    gap: 4px;
-    margin-top: 3px;
+    gap: clamp(2px, 0.5vw, 4px); /* Gap responsivo */
+    margin-top: 2px;
+    flex-wrap: wrap;
 }
 
 .progress-dot {
-    width: 6px;
-    height: 6px;
+    width: clamp(3px, 1vw, 6px); /* Tamaño responsivo */
+    height: clamp(3px, 1vw, 6px);
     background-color: var(--primary-color);
     border-radius: 50%;
     display: block;
+    flex-shrink: 0;
 }
 
 .noticing-game-word-button:hover {
@@ -362,6 +376,32 @@
     border-radius: 4px;
 }
 
+/* Estilos para el selector de modos de ordenamiento */
+.noticing-game-mode-selector {
+    margin: 10px 0;
+}
+
+.noticing-game-mode-selector select {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    background-color: var(--panel-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+
+.mode-description {
+    margin-top: 8px;
+    padding: 8px;
+    background-color: var(--bg-color);
+    border: 1px solid var(--divider-color);
+    border-radius: 4px;
+    color: var(--secondary-text);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
 /* Estilos para la importación de listas */
 #import-list-file {
     display: block;
@@ -409,6 +449,102 @@
     padding: 10px;
 }
 
+/* Estilos para configuración del grid */
+.grid-config-container {
+    margin: 10px 0;
+    padding: 15px;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.grid-config-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.grid-config-row label {
+    flex: 1;
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+.grid-config-row select {
+    flex: 0 0 80px;
+    padding: 5px;
+    background-color: var(--panel-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.grid-preview {
+    text-align: center;
+    margin-top: 10px;
+    padding: 8px;
+    background-color: var(--divider-color);
+    border-radius: 4px;
+}
+
+.grid-preview small {
+    color: var(--secondary-text);
+    font-weight: bold;
+}
+
+#grid-size-preview {
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+/* Media queries para ajustes responsivos */
+@media (max-width: 600px) {
+    .noticing-game-panel {
+        width: 95vw;
+        height: 80vh;
+        top: 10px;
+        right: 2.5vw;
+        left: 2.5vw;
+    }
+
+    .noticing-game-buttons-container {
+        gap: 4px;
+    }
+
+    .noticing-game-word-button {
+        /* font-size eliminado para que JS lo controle dinámicamente */
+        min-height: 35px;
+        padding: 4px;
+    }
+
+    .grid-config-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .grid-config-row label {
+        margin-bottom: 5px;
+    }
+}
+
+@media (max-width: 400px) {
+    .noticing-game-word-button {
+        /* font-size eliminado para que JS lo controle dinámicamente */
+        min-height: 30px;
+    }
+
+    .progress-dot {
+        width: 3px;
+        height: 3px;
+    }
+}
+
 .noticing-game-about-content button {
     background-color: var(--primary-color);
     color: white;
@@ -444,7 +580,7 @@
     border-radius: 8px;
     padding: 20px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    z-index: 10000;
+    z-index: 11000;
     width: 300px;
     text-align: center;
 }
@@ -454,4 +590,122 @@
     justify-content: center;
     gap: 10px;
     margin-top: 15px;
+}
+
+/* --- Palabras aprendidas: Modal y colores de dificultad --- */
+.learned-words-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--panel-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+    z-index: 10001;
+    width: 400px;
+    max-width: 95vw;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 18px 16px 16px 16px;
+    font-family: Arial, sans-serif;
+}
+
+.learned-words-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.learned-words-modal-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.learned-words-modal-close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    color: var(--primary-color);
+    cursor: pointer;
+    font-weight: bold;
+    transition: color 0.2s;
+}
+.learned-words-modal-close:hover {
+    color: #ff4c4c;
+}
+
+.learned-words-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.learned-word-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--divider-color);
+    font-size: 15px;
+    transition: background 0.2s;
+}
+
+.learned-word-label {
+    font-weight: bold;
+    flex: 1;
+    text-align: left;
+    word-break: break-word;
+}
+
+.learned-word-difficulty {
+    font-size: 13px;
+    font-weight: bold;
+    margin-left: 10px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    min-width: 60px;
+    text-align: center;
+    color: white;
+}
+
+/* Colores de dificultad */
+.difficulty-easy {
+    background: #4caf50;
+}
+.difficulty-medium {
+    background: #ffc107;
+    color: #333;
+}
+.difficulty-hard {
+    background: #f44336;
+}
+.difficulty-unknown {
+    background: #aaa;
+    color: #fff;
+}
+
+.learned-words-empty {
+    text-align: center;
+    color: var(--secondary-text);
+    font-style: italic;
+    margin: 20px 0;
+}
+
+@media (max-width: 500px) {
+    .learned-words-modal {
+        width: 98vw;
+        padding: 10px 4px 8px 4px;
+    }
+    .learned-words-modal-title {
+        font-size: 15px;
+    }
+    .learned-word-item {
+        font-size: 13px;
+    }
 }

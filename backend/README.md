@@ -15,6 +15,9 @@ This backend server solves the problem of YouTube's restrictions on direct subti
 - Parse TTML subtitle format with timestamps
 - RESTful API with JSON responses
 - Error handling and logging
+- Desktop GUI application with system tray integration
+- Auto-startup configuration
+- Server information endpoint
 
 ## Requirements
 
@@ -99,7 +102,29 @@ Health check endpoint.
 {
   "status": "running",
   "service": "Noticing Game Subtitle Server",
-  "version": "1.0.0",
+  "version": "0.1.0",
+  "timestamp": "2023-12-01T10:30:00"
+}
+```
+
+### GET /info
+
+Server information endpoint with version, author, and license details.
+
+**Response:**
+```json
+{
+  "name": "Noticing Game - Subtitle Extraction Server",
+  "version": "0.1.0",
+  "description": "Backend server using yt-dlp to extract YouTube subtitles for the Noticing Game extension",
+  "author": "Rafael Hernandez Bustamante",
+  "license": "GNU General Public License v3.0 (GPL-3.0)",
+  "repository": "https://github.com/Rudull/noticing-game",
+  "endpoints": {
+    "/": "Health check",
+    "/info": "Server information",
+    "/extract-subtitles": "Extract subtitles from YouTube video (POST/GET)"
+  },
   "timestamp": "2023-12-01T10:30:00"
 }
 ```
@@ -251,6 +276,29 @@ python -c "import flask; print('Flask imported successfully')"
 python subtitle_server.py
 ```
 
+## Desktop Application
+
+The backend includes a desktop GUI application (`desktop_app.py`) that provides:
+
+- **Easy server management**: Start/stop server with one click
+- **System tray integration**: Runs in background with colored status indicator
+- **Auto-startup**: Configure to start with your operating system
+- **Real-time monitoring**: Live server status and log viewing
+- **Settings management**: Configure host, port, and other options
+- **About dialog**: Version information and server details
+
+### Running the Desktop App
+
+```bash
+python desktop_app.py
+```
+
+### System Tray Icon
+
+- **Violet circle**: Server is running
+- **Gray circle**: Server is stopped
+- **Right-click**: Access menu options
+
 ## Development
 
 ### Running Tests
@@ -283,11 +331,14 @@ flake8 subtitle_server.py
 
 ```
 backend/
-├── subtitle_server.py    # Main server application
-├── requirements.txt      # Python dependencies
-├── setup.py             # Package setup
-├── README.md            # This file
-└── tests/               # Test files (if any)
+├── desktop_app.py           # Desktop GUI application
+├── subtitle_server.py       # Main server application
+├── requirements.txt         # Python dependencies
+├── setup.py                # Package setup
+├── README.md               # This file
+├── build_executable_*.py   # Build scripts for different platforms
+├── auto_startup/           # Auto-startup service scripts
+└── tests/                  # Test files (if any)
 ```
 
 ## Security Considerations
@@ -330,11 +381,61 @@ For issues and questions:
 - Open an issue on GitHub
 - Contact: Rafael Hernandez Bustamante
 
+## Build Executables
+
+The project includes scripts to build standalone executables:
+
+- `build_executable_windows.py` - Windows executable with PyInstaller
+- `build_executable_linux.py` - Linux/macOS executable with PyInstaller  
+- `build_cx_freeze_windows.py` - Windows executable with cx_Freeze
+
+### Building
+
+```bash
+# Windows (PyInstaller)
+python build_executable_windows.py --clean --test
+
+# Linux/macOS (PyInstaller)
+python build_executable_linux.py --clean --test
+
+# Windows (cx_Freeze alternative)
+python build_cx_freeze_windows.py --clean --test
+```
+
+## Distribution Packaging
+
+To create a complete, ready-to-ship package (including executable, dependencies, assets, startup scripts, and documentation) for **Windows, Linux, or macOS**, use:
+
+```bash
+python build_to_distribution.py --clean --test
+```
+
+The result will be in the `distribution/` folder, ready to deliver or deploy on another machine.
+
+You can force a specific platform with `--platform windows` or `--platform linux`.
+
+## Auto-Startup Services
+
+Install as system service for automatic startup:
+
+- **Windows**: `auto_startup/install_windows_service.py`
+- **Linux/macOS**: `auto_startup/install_linux_service.sh`
+
+## Assets Integration
+
+The application uses icons from the `../assets/` directory:
+- `icono.ico` - Windows executable icon
+- Icon path is automatically detected from assets folder
+
 ## Changelog
 
-### Version 1.0.0
+### Version 0.1.0
 - Initial release
 - Basic subtitle extraction with yt-dlp
-- Flask REST API
+- Flask REST API with `/info` endpoint
 - TTML parsing support
 - Multi-language support
+- Desktop GUI application with system tray
+- Auto-startup configuration
+- Build scripts for multiple platforms
+- Service installation scripts

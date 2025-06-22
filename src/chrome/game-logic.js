@@ -3,9 +3,25 @@ window.GameLogic = (function () {
   const UI = window.UIComponents;
 
   // Importantes constantes del juego
-  const CLICKS_TO_REPLACE_WORD = 3;
+  // CLICKS_TO_REPLACE_WORD ahora es dinámico y configurable
+  let CLICKS_TO_REPLACE_WORD = 3;
   const MAX_POINTS = 100; // Puntos máximos por palabra
   const PENALTY_POINTS = 75; // Puntos de penalización
+
+  // Función para obtener el valor actual de CLICKS_TO_REPLACE_WORD desde storage
+  function getClicksToReplaceWord(callback) {
+    if (typeof chrome !== "undefined" && chrome.storage) {
+      chrome.storage.local.get(["wordClicksToOvercome"], function (result) {
+        let value = parseInt(result.wordClicksToOvercome);
+        if (!value || value < 1 || value > 6) value = 3;
+        CLICKS_TO_REPLACE_WORD = value;
+        if (typeof callback === "function") callback(value);
+      });
+    } else {
+      if (typeof callback === "function") callback(CLICKS_TO_REPLACE_WORD);
+    }
+    return CLICKS_TO_REPLACE_WORD;
+  }
 
   // Función utilitaria para formatear la palabra (asegurando que "i" y "i'm" se muestren con mayúscula inicial)
   function formatWordDisplay(word) {
@@ -31,7 +47,9 @@ window.GameLogic = (function () {
     dotsContainer.className = "progress-dots";
 
     // Añadir la cantidad correcta de puntos
-    for (let i = 0; i < clickCount && i < CLICKS_TO_REPLACE_WORD; i++) {
+    let maxDots = CLICKS_TO_REPLACE_WORD;
+    // Si storage aún no cargó, usar el valor actual
+    for (let i = 0; i < clickCount && i < maxDots; i++) {
       const dot = document.createElement("span");
       dot.className = "progress-dot";
       dotsContainer.appendChild(dot);
@@ -43,13 +61,13 @@ window.GameLogic = (function () {
   // Función auxiliar para formatear números con separadores de miles usando punto
   function formatNumber(num) {
     // Validar entrada
-    if (typeof num !== 'number' || isNaN(num)) {
+    if (typeof num !== "number" || isNaN(num)) {
       return "0";
     }
-    
+
     // Asegurar que sea un entero
     num = Math.floor(Math.abs(num));
-    
+
     // Convertir número a string y formatear manualmente con puntos como separadores de miles
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   }
@@ -67,17 +85,33 @@ window.GameLogic = (function () {
   let allWords = [];
 
   // Inicializar el juego con palabras
-  function initializeGame(words) {
+  function initializeGame(words, totalWordsToShow = 25) {
     // Reiniciar variables
     userScore = 0;
     completedWords = new Set();
 
+    // Aplicar ordenamiento según el modo seleccionado
+    let sortedWords = words;
+    if (
+      window.WordSortingModes &&
+      typeof window.WordSortingModes.sortWords === "function"
+    ) {
+      sortedWords = window.WordSortingModes.sortWords(words);
+      console.log(
+        `GameLogic: Words sorted using mode: ${window.WordSortingModes.getCurrentMode()}`,
+      );
+    }
+
     // Separar palabras mostradas y palabras disponibles para reemplazo
-    displayedWords = words.slice(0, 25);
-    availableWords = words.slice(25);
+    displayedWords = sortedWords.slice(0, totalWordsToShow);
+    availableWords = sortedWords.slice(totalWordsToShow);
 
     // Crear copia completa de las palabras para reciclaje en caso de listas pequeñas
-    allWords = [...words];
+    allWords = [...sortedWords];
+
+    console.log(
+      `GameLogic: Initialized game with ${totalWordsToShow} displayed words out of ${words.length} total words`,
+    );
 
     return {
       displayedWords,
@@ -99,41 +133,44 @@ window.GameLogic = (function () {
     if (!SP) {
       console.error("SubtitleProcessor no está disponible");
       if (statusElement) {
-        statusElement.textContent = "Error: Subtitle processor not available. Please reload the page.";
+        statusElement.textContent =
+          "Error: Subtitle processor not available. Please reload the page.";
       }
       return;
     }
 
     // Verificar que el procesador esté inicializado
-    if (typeof SP.isInitialized === 'function' && !SP.isInitialized()) {
+    if (typeof SP.isInitialized === "function" && !SP.isInitialized()) {
       console.error("SubtitleProcessor no está inicializado");
       if (statusElement) {
-        statusElement.textContent = "Extension is still loading. Please wait and try again.";
+        statusElement.textContent =
+          "Extension is still loading. Please wait and try again.";
       }
       return;
     }
 
     // Verificar que las funciones necesarias estén disponibles
-    if (typeof SP.isWordRecent !== 'function' || typeof SP.markWordAsNoted !== 'function') {
+    if (
+      typeof SP.isWordRecent !== "function" ||
+      typeof SP.markWordAsNoted !== "function"
+    ) {
       console.error("SubtitleProcessor methods not available");
       if (statusElement) {
-        statusElement.textContent = "Error: Required functions not available. Please reload the page.";
+        statusElement.textContent =
+          "Error: Required functions not available. Please reload the page.";
       }
       return;
     }
 
     // Obtener recentWords de forma segura
     let recentWords = {};
-    if (typeof SP.recentWords === 'function') {
+    if (typeof SP.recentWords === "function") {
       recentWords = SP.recentWords();
-    } else if (SP.recentWords && typeof SP.recentWords === 'object') {
+    } else if (SP.recentWords && typeof SP.recentWords === "object") {
       recentWords = SP.recentWords;
     }
 
-    console.log(
-      `Estado actual de recentWords:`,
-      JSON.stringify(recentWords),
-    );
+    console.log(`Estado actual de recentWords:`, JSON.stringify(recentWords));
 
     // Obtener información detallada sobre la palabra
     let wordStatus;
@@ -142,7 +179,8 @@ window.GameLogic = (function () {
     } catch (error) {
       console.error("Error checking word status:", error);
       if (statusElement) {
-        statusElement.textContent = "Error checking word status. Please try again.";
+        statusElement.textContent =
+          "Error checking word status. Please try again.";
       }
       return;
     }
@@ -165,13 +203,21 @@ window.GameLogic = (function () {
     }
 
     // Si se ha hecho clic el número configurado de veces O se ha hecho clic tantas veces como aparece la palabra (para palabras con baja frecuencia)
-    if (
-      parseInt(wordButton.dataset.clicks) >= CLICKS_TO_REPLACE_WORD ||
-      (wordInfo.count < CLICKS_TO_REPLACE_WORD &&
-        parseInt(wordButton.dataset.clicks) >= wordInfo.count)
-    ) {
-      replaceOrRemoveWordButton(wordButton, wordInfo, container, statusElement);
-    }
+    // Usar el valor dinámico de CLICKS_TO_REPLACE_WORD
+    getClicksToReplaceWord(function (clicksToReplace) {
+      if (
+        parseInt(wordButton.dataset.clicks) >= clicksToReplace ||
+        (wordInfo.count < clicksToReplace &&
+          parseInt(wordButton.dataset.clicks) >= wordInfo.count)
+      ) {
+        replaceOrRemoveWordButton(
+          wordButton,
+          wordInfo,
+          container,
+          statusElement,
+        );
+      }
+    });
   }
 
   // Manejar clic correcto con nueva lógica de puntuación basada en tiempo
@@ -181,9 +227,21 @@ window.GameLogic = (function () {
     );
 
     // Validar timeDiff
-    if (typeof timeDiff !== 'number' || timeDiff < 0) {
+    if (typeof timeDiff !== "number" || timeDiff < 0) {
       console.warn("Invalid timeDiff value, using default");
       timeDiff = 1000; // Valor por defecto
+    }
+
+    // Registrar clic correcto en el tracker de dificultad
+    if (
+      window.WordDifficultyTracker &&
+      typeof window.WordDifficultyTracker.recordWordClick === "function"
+    ) {
+      window.WordDifficultyTracker.recordWordClick(
+        wordInfo.word,
+        "correct",
+        timeDiff,
+      );
     }
 
     // Incrementar contador de clics para esta palabra
@@ -249,6 +307,17 @@ window.GameLogic = (function () {
       `Palabra "${wordInfo.word}" ya ha sido notada en esta aparición`,
     );
 
+    // Registrar clic ya notado en el tracker de dificultad
+    if (
+      window.WordDifficultyTracker &&
+      typeof window.WordDifficultyTracker.recordWordClick === "function"
+    ) {
+      window.WordDifficultyTracker.recordWordClick(
+        wordInfo.word,
+        "already_noted",
+      );
+    }
+
     // No penaliza, solo muestra un mensaje
     if (statusElement) {
       const oldStatus = statusElement.textContent;
@@ -268,6 +337,14 @@ window.GameLogic = (function () {
   // Manejar clic incorrecto con la nueva penalización
   function handleIncorrectClick(wordButton, wordInfo, statusElement) {
     console.log(`PENALIZACIÓN - Palabra "${wordInfo.word}" NO es reciente`);
+
+    // Registrar clic incorrecto en el tracker de dificultad
+    if (
+      window.WordDifficultyTracker &&
+      typeof window.WordDifficultyTracker.recordWordClick === "function"
+    ) {
+      window.WordDifficultyTracker.recordWordClick(wordInfo.word, "penalty");
+    }
 
     // Si la palabra tiene algún progreso, se debe reiniciar a cero
     const currentClicks = parseInt(wordButton.dataset.clicks) || 0;
@@ -371,6 +448,14 @@ window.GameLogic = (function () {
         statusElement,
       );
 
+      // Aplicar el tamaño de fuente configurado al nuevo botón
+      if (typeof chrome !== "undefined" && chrome.storage) {
+        chrome.storage.local.get(["wordButtonFontSize"], function (result) {
+          const fontSize = result.wordButtonFontSize || 13;
+          newButton.style.fontSize = fontSize + "px";
+        });
+      }
+
       // Reemplazar el botón actual
       wordButton.parentNode.replaceChild(newButton, wordButton);
 
@@ -390,6 +475,9 @@ window.GameLogic = (function () {
       remainingButtons.forEach((button, idx) => {
         button.dataset.index = idx;
       });
+
+      // Actualizar el grid dinámicamente si es necesario
+      updateGridLayout(container, displayedWords.length);
 
       // Notificar al usuario
       if (statusElement) {
@@ -423,7 +511,8 @@ window.GameLogic = (function () {
       } catch (error) {
         console.error("Error processing word click:", error);
         if (statusElement) {
-          statusElement.textContent = "Error processing click. Please try again.";
+          statusElement.textContent =
+            "Error processing click. Please try again.";
         }
       }
     });
@@ -442,9 +531,63 @@ window.GameLogic = (function () {
     return overcomeTotalWords;
   }
 
+  // Función para obtener configuración del grid
+  function getGridConfig(callback) {
+    if (typeof chrome !== "undefined" && chrome.storage) {
+      chrome.storage.local.get(["gridColumns", "gridRows"], function (result) {
+        const columns = result.gridColumns || 5;
+        const rows = result.gridRows || 5;
+        const totalWords = columns * rows;
+
+        if (callback) {
+          callback({
+            columns: columns,
+            rows: rows,
+            totalWords: totalWords,
+          });
+        }
+      });
+    } else {
+      // Fallback si chrome.storage no está disponible
+      if (callback) {
+        callback({
+          columns: 5,
+          rows: 5,
+          totalWords: 25,
+        });
+      }
+    }
+  }
+
+  // Función para actualizar el layout del grid cuando cambia el número de palabras
+  function updateGridLayout(container, currentWordCount) {
+    // Obtener configuración actual del grid
+    getGridConfig((config) => {
+      const maxWords = config.totalWords;
+      const columns = config.columns;
+
+      // Calcular filas necesarias basándose en las palabras restantes
+      const neededRows = Math.ceil(currentWordCount / columns);
+
+      // Solo actualizar si hay menos palabras de las esperadas
+      if (currentWordCount < maxWords) {
+        console.log(
+          `Updating grid layout: ${currentWordCount} words remaining, ${neededRows} rows needed`,
+        );
+
+        // Mantener el número de columnas pero ajustar las filas implícitamente
+        // El CSS grid se ajustará automáticamente
+        container.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+      }
+    });
+  }
+
   // Exportar funciones públicas
   return {
-    CLICKS_TO_REPLACE_WORD,
+    // Getter para el valor dinámico
+    getCLICKS_TO_REPLACE_WORD: function (cb) {
+      return getClicksToReplaceWord(cb);
+    },
     MAX_POINTS,
     PENALTY_POINTS,
     initializeGame,
@@ -452,5 +595,7 @@ window.GameLogic = (function () {
     createWordButton,
     getOvercomeTotalWords,
     resetOvercomeTotalWords,
+    getGridConfig,
+    updateGridLayout,
   };
 })();

@@ -3,3 +3,16 @@ assets/icon.xcf
 assets/noticing_game.zip
 assets/noticing_game.pem
 assets/*.pem
+
+# Build directories and files
+backend/build/
+backend/dist/
+backend/__pycache__/
+backend/*.spec
+backend/setup_cx_freeze.py
+backend/*.egg-info/
+
+# Build directories in project root (when using --build-root option)
+build/
+dist/
+distribution/
