@@ -15,6 +15,8 @@ Whether you're a language learner, teacher, or simply curious about the vocabula
 
 Unlock a new way to learn languages—directly on YouTube!
 
+![The game interface](assets/noticing_game_2.png)
+
 ---
 
 ## How It Works
@@ -47,7 +49,7 @@ Noticing Game consists of two parts:
 
 **Desktop App Example:**
 
-![Noticing Game Server Main Window](assets/noticin-game-server.png)
+![The game interface](assets/noticin-game-server.png)
 
 ---
 

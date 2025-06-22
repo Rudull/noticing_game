@@ -8,9 +8,9 @@ This directory contains scripts to create standalone executables for the Noticin
 
 Below are screenshots of the Noticing Game desktop application and its settings window for visual reference:
 
-<img src="../assets/noticin-game-server.png" alt="Noticing Game Server Main Window" width="600"/>
+![The game interface](assets/noticin-game-server.png)
 
-<img src="../assets/noticin-game-server-settings.png" alt="Noticing Game Server Settings Window" width="600"/>
+![The game interface](assets/noticin-game-server-settings.png)
 
 ---
 
@@ -18,9 +18,9 @@ Below are screenshots of the Noticing Game desktop application and its settings 
 
 ## 📁 Available Scripts
 
-- **Linux/macOS:**  
+- **Linux/macOS:**
   - `build_yt-dlp_executable_linux.py`
-- **Windows:**  
+- **Windows:**
   - `build_yt-dlp_executable_windows.py`
   - `build_cx-freeze_executable_windows.py` (alternative)
 - **Distribution Packaging:**
