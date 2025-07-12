@@ -29,10 +29,20 @@ import platform
 from pathlib import Path
 from datetime import datetime
 
+def is_windows():
+    return platform.system().lower() == "windows"
+
+def safe_print(msg, emoji=None):
+    """Prints message with emoji if not on Windows, else without emoji."""
+    if emoji and not is_windows():
+        print(f"{emoji} {msg}")
+    else:
+        print(msg)
+
 def print_banner():
     """Print the build script banner"""
     print("=" * 80)
-    print("🎮 NOTICING GAME - BUILD TO DISTRIBUTION")
+    safe_print("NOTICING GAME - BUILD TO DISTRIBUTION", "🎮")
     print("=" * 80)
     print("Build executable and place all artifacts in distribution directory")
     print("for easy packaging and distribution")
@@ -81,7 +91,7 @@ def prepare_distribution_directory():
     project_root = find_project_root()
     dist_dir = project_root / "distribution"
 
-    print(f"📁 Distribution directory: {dist_dir}")
+    safe_print(f"Distribution directory: {dist_dir}", "📁")
 
     # Create distribution directory if it doesn't exist
     dist_dir.mkdir(exist_ok=True)
@@ -90,7 +100,7 @@ def prepare_distribution_directory():
     subdirs = ['dist', 'build', 'logs', 'packages']
     for subdir in subdirs:
         (dist_dir / subdir).mkdir(exist_ok=True)
-        print(f"   Created: {subdir}/")
+        safe_print(f"   Created: {subdir}/", None)
 
     # Create build info file
     build_info = {
@@ -119,7 +129,7 @@ def clean_distribution_directory():
     if not dist_dir.exists():
         return
 
-    print("🧹 Cleaning distribution directory...")
+    safe_print("Cleaning distribution directory...", "🧹")
 
     # Clean subdirectories but keep the structure
     subdirs_to_clean = ['dist', 'build']
@@ -160,14 +170,14 @@ def run_with_spinner(cmd, cwd=None):
 
 def run_build_script(target_platform, args):
     """Run the appropriate build script"""
-    print(f"🚀 Starting build for platform: {target_platform}")
+    safe_print(f"Starting build for platform: {target_platform}", "🚀")
 
     build_script = get_build_script_path(target_platform)
 
     if not build_script.exists():
         raise FileNotFoundError(f"Build script not found: {build_script}")
 
-    print(f"📄 Using build script: {build_script.name}")
+    safe_print(f"Using build script: {build_script.name}", "📄")
 
     # Construct command
     cmd = [sys.executable, str(build_script), "--build-distribution"]
@@ -197,7 +207,7 @@ def run_build_script(target_platform, args):
 
 def copy_additional_files():
     """Copy additional files to distribution directory"""
-    print("📦 Copying additional files...")
+    safe_print("Copying additional files...", "📦")
 
     project_root = find_project_root()
     backend_dir = project_root / "backend"
@@ -338,23 +348,23 @@ def show_distribution_summary():
     dist_dir = project_root / "distribution"
 
     print("\n" + "=" * 80)
-    print("🎉 DISTRIBUTION BUILD COMPLETED!")
+    safe_print("DISTRIBUTION BUILD COMPLETED!", "🎉")
     print("=" * 80)
 
-    print(f"\n📁 Distribution Location: {dist_dir}")
+    print(f"\nDistribution Location: {dist_dir}")
 
     # Show directory structure
-    print("\n📦 Distribution Contents:")
+    print("\nDistribution Contents:")
     try:
         for item in sorted(dist_dir.iterdir()):
             if item.is_dir():
                 file_count = len(list(item.rglob("*"))) if item.exists() else 0
-                print(f"   📂 {item.name}/ ({file_count} items)")
+                safe_print(f"   {item.name}/ ({file_count} items)", "📂")
             else:
                 size_kb = item.stat().st_size / 1024
-                print(f"   📄 {item.name} ({size_kb:.1f} KB)")
+                safe_print(f"   {item.name} ({size_kb:.1f} KB)", "📄")
     except Exception as e:
-        print(f"   ⚠️  Could not list contents: {e}")
+        safe_print(f"   Could not list contents: {e}", "⚠️")
 
     # Find executable
     dist_dist_dir = dist_dir / "dist"
@@ -367,16 +377,16 @@ def show_distribution_summary():
 
     if executable:
         size_mb = executable.stat().st_size / (1024 * 1024)
-        print(f"\n🚀 Executable: {executable}")
+        safe_print(f"Executable: {executable}", "🚀")
         print(f"📏 Size: {size_mb:.1f} MB")
 
-    print("\n📋 Next Steps:")
+    print("\nNext Steps:")
     print("1. Test the executable in the dist/ directory")
     print("2. Copy the entire distribution/ folder to target machines")
     print("3. Run the executable or install as system service")
     print("4. See README_DISTRIBUTION.md for detailed instructions")
 
-    print(f"\n✨ Distribution package ready for deployment!")
+    print(f"\nDistribution package ready for deployment!")
 
 def main():
     """Main function"""
@@ -397,16 +407,16 @@ def main():
         if args.platform == "auto":
             target_platform = detect_platform()
             if target_platform == "unknown":
-                print("❌ Could not detect platform. Please specify with --platform")
+                safe_print("Could not detect platform. Please specify with --platform", "❌")
                 sys.exit(1)
         else:
             target_platform = args.platform
 
-        print(f"🎯 Target platform: {target_platform}")
-        print(f"🔧 Current platform: {platform.system()}")
+        safe_print(f"Target platform: {target_platform}", "🎯")
+        safe_print(f"Current platform: {platform.system()}", "🔧")
 
         if target_platform == "windows" and platform.system() != "Windows":
-            print("⚠️  Warning: Building Windows executable on non-Windows platform")
+            safe_print("Warning: Building Windows executable on non-Windows platform", "⚠️")
 
         # Find project root
         project_root = find_project_root()
@@ -434,10 +444,10 @@ def main():
         show_distribution_summary()
 
     except KeyboardInterrupt:
-        print("\n❌ Build cancelled by user")
+        safe_print("Build cancelled by user", "❌")
         sys.exit(1)
     except Exception as e:
-        print(f"❌ Build error: {e}")
+        safe_print(f"Build error: {e}", "❌")
         sys.exit(1)
 
 if __name__ == "__main__":

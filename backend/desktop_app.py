@@ -1101,9 +1101,7 @@ X-GNOME-Autostart-enabled=true
             """Show settings dialog"""
             settings_window = tk.Toplevel(self.root)
             settings_window.title("Settings")
-            # CAMBIO: No usar geometría fija. Dejar que Tkinter calcule el tamaño.
-            # settings_window.geometry("450x450")
-            settings_window.resizable(True, True) # Permitir redimensionar es una buena práctica
+            settings_window.resizable(True, True)
             settings_window.transient(self.root)
             settings_window.grab_set()
 
@@ -1113,13 +1111,8 @@ X-GNOME-Autostart-enabled=true
             y = self.root.winfo_y() + (self.root.winfo_height() - settings_window.winfo_reqheight()) / 2
             settings_window.geometry(f"+{int(x)}+{int(y)}")
 
-            # --- CAMBIO: Estructura de layout simplificada ---
-
-            # 1. Frame principal que contendrá todo
             main_frame = ttk.Frame(settings_window, padding="15")
             main_frame.pack(fill=tk.BOTH, expand=True)
-
-            # 2. Frame para el contenido (opciones y campos de entrada)
             content_frame = ttk.Frame(main_frame)
             content_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
@@ -1133,18 +1126,21 @@ X-GNOME-Autostart-enabled=true
             ttk.Checkbutton(content_frame, text="Start with operating system",
                            variable=auto_startup_var).pack(anchor=tk.W, pady=5)
 
-            # Minimize to tray setting
-            if TRAY_AVAILABLE:
-                minimize_tray_var = tk.BooleanVar(value=self.config.get('minimize_to_tray', True))
-                ttk.Checkbutton(content_frame, text="Minimize to system tray",
-                               variable=minimize_tray_var).pack(anchor=tk.W, pady=5)
+            # Minimize to tray setting (always visible, disabled if not available)
+            minimize_tray_var = tk.BooleanVar(value=self.config.get('minimize_to_tray', True))
+            minimize_chk = ttk.Checkbutton(content_frame, text="Minimize to system tray",
+                                       variable=minimize_tray_var)
+            minimize_chk.pack(anchor=tk.W, pady=5)
+            if not TRAY_AVAILABLE:
+                minimize_chk.state(['disabled'])
 
-                enable_tray_var = tk.BooleanVar(value=self.config.get('enable_tray', True))
-                ttk.Checkbutton(content_frame, text="Enable system tray",
-                               variable=enable_tray_var).pack(anchor=tk.W, pady=5)
-            else:
-                minimize_tray_var = tk.BooleanVar(value=False)
-                enable_tray_var = tk.BooleanVar(value=False)
+            # Enable tray setting (always visible, disabled if not available)
+            enable_tray_var = tk.BooleanVar(value=self.config.get('enable_tray', True))
+            enable_chk = ttk.Checkbutton(content_frame, text="Enable system tray",
+                                     variable=enable_tray_var)
+            enable_chk.pack(anchor=tk.W, pady=5)
+            if not TRAY_AVAILABLE:
+                enable_chk.state(['disabled'])
 
             # Server settings
             ttk.Label(content_frame, text="Server Host:").pack(anchor=tk.W, pady=(15, 2))
@@ -1157,21 +1153,16 @@ X-GNOME-Autostart-enabled=true
             port_entry = ttk.Entry(content_frame, textvariable=port_var)
             port_entry.pack(fill=tk.X, pady=(0, 10))
 
-            # Check interval
             ttk.Label(content_frame, text="Status Check Interval (seconds):").pack(anchor=tk.W, pady=2)
             interval_var = tk.StringVar(value=str(self.config.get('check_interval', 5)))
             interval_entry = ttk.Entry(content_frame, textvariable=interval_var)
             interval_entry.pack(fill=tk.X, pady=(0, 10))
 
-            # 3. Frame para los botones, separado en la parte inferior
             button_frame = ttk.Frame(main_frame)
             button_frame.pack(fill=tk.X, pady=(10, 0))
 
-            # --- Fin del cambio de estructura ---
-
             def save_settings():
                 try:
-                    # Check for changes that require server restart
                     old_host = self.config.get('server_host', '127.0.0.1')
                     old_port = self.config.get('server_port', 5000)
                     old_auto_startup = self.config.get('auto_startup_os', False)
@@ -1180,7 +1171,6 @@ X-GNOME-Autostart-enabled=true
                     new_host = host_var.get()
                     new_port = int(port_var.get())
 
-                    # Save all settings
                     self.config['auto_start'] = auto_start_var.get()
                     self.config['auto_startup_os'] = auto_startup_var.get()
                     self.config['minimize_to_tray'] = minimize_tray_var.get()
@@ -1191,24 +1181,20 @@ X-GNOME-Autostart-enabled=true
 
                     self.save_config()
 
-                    # Check if server host/port changed and restart if running
                     if (old_host != new_host or old_port != new_port) and self.is_server_running:
                         self.log_message(f"Server configuration changed (host: {old_host} -> {new_host}, port: {old_port} -> {new_port})")
                         self.log_message("Restarting server with new configuration...")
                         self.restart_server()
 
-                    # Handle auto-startup change
                     if old_auto_startup != auto_startup_var.get():
                         self.setup_auto_startup()
 
-                    # Handle tray icon changes
                     if old_enable_tray != enable_tray_var.get():
                         if enable_tray_var.get() and TRAY_AVAILABLE:
                             if not self.tray_icon:
                                 self.setup_system_tray()
                                 if self.tray_icon:
-                                    tray_thread = threading.Thread(target=self.tray_icon.run, daemon=True)
-                                    tray_thread.start()
+                                    pass
                         else:
                             if self.tray_icon:
                                 self.tray_icon.stop()
@@ -1226,13 +1212,10 @@ X-GNOME-Autostart-enabled=true
             def cancel_settings():
                 settings_window.destroy()
 
-            # CAMBIO: Empaquetar los botones para que se alineen a la derecha
             save_btn = ttk.Button(button_frame, text="Save Settings", command=save_settings)
             save_btn.pack(side=tk.RIGHT, padx=(5, 0))
-
             cancel_btn = ttk.Button(button_frame, text="Cancel", command=cancel_settings)
             cancel_btn.pack(side=tk.RIGHT)
-
             settings_window.focus_set()
 
     def show_about(self):
