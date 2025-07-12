@@ -111,7 +111,7 @@ See [GNU GPL v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html) for details.
 
 ## About
 
-- Add-on Version: 0.2.2
+- Add-on Version: 0.3.2
 - Backend Server Version: 0.1.0
 - Developed by: Rafael Hernandez Bustamante
 - Contact: www.linkedin.com/in/rafaelhernandezbustamante

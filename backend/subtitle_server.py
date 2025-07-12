@@ -7,13 +7,16 @@ Backend server using yt-dlp to extract YouTube subtitles for the Noticing Game e
 import json
 import logging
 import re
+import argparse
 from datetime import datetime
+from pathlib import Path
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import yt_dlp
 import tempfile
 import os
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(
@@ -25,6 +28,34 @@ logger = logging.getLogger(__name__)
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
+
+def load_config():
+    """Load configuration from file"""
+    default_config = {
+        'server_host': '127.0.0.1',
+        'server_port': 5000,
+        'debug': False
+    }
+
+    config_file = Path.home() / ".noticing_game_config.json"
+
+    if config_file.exists():
+        try:
+            with open(config_file, 'r') as f:
+                saved_config = json.load(f)
+                # Only use server-related config from the file
+                server_config = {
+                    'server_host': saved_config.get('server_host', default_config['server_host']),
+                    'server_port': saved_config.get('server_port', default_config['server_port']),
+                    'debug': saved_config.get('debug', default_config['debug'])
+                }
+                return server_config
+        except Exception as e:
+            logger.warning(f"Error loading config file: {e}, using defaults")
+            return default_config
+    else:
+        logger.info("Configuration file not found, using defaults")
+        return default_config
 
 class SubtitleExtractor:
     """Class to handle YouTube subtitle extraction using yt-dlp"""
@@ -239,7 +270,7 @@ def home():
     return jsonify({
         'status': 'running',
         'service': 'Noticing Game Subtitle Server',
-        'version': '0.1.0',
+        'version': '0.1.1',
         'timestamp': datetime.now().isoformat()
     })
 
@@ -248,7 +279,7 @@ def info():
     """Server information endpoint"""
     return jsonify({
         'name': 'Noticing Game - Subtitle Extraction Server',
-        'version': '0.1.0',
+        'version': '0.1.1',
         'description': 'Backend server using yt-dlp to extract YouTube subtitles for the Noticing Game extension',
         'author': 'Rafael Hernandez Bustamante',
         'license': 'GNU General Public License v3.0 (GPL-3.0)',
@@ -344,16 +375,40 @@ def internal_error(error):
         'error': 'Internal server error'
     }), 500
 
-if __name__ == '__main__':
+def main():
+    """Main function to start the server with configuration"""
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Start the Noticing Game subtitle extraction server")
+    parser.add_argument("--host", help="Host to bind to (overrides config file)")
+    parser.add_argument("--port", type=int, help="Port to bind to (overrides config file)")
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
+
+    args = parser.parse_args()
+
+    # Load configuration from file
+    config = load_config()
+
+    # Override with command line arguments if provided
+    host = args.host if args.host else config['server_host']
+    port = args.port if args.port else config['server_port']
+    debug = args.debug if args.debug else config['debug']
+
     logger.info("Starting Noticing Game Subtitle Server...")
-    logger.info("Server will be available at http://localhost:5000")
+    logger.info(f"Server will be available at http://{host}:{port}")
     logger.info("Use POST /extract-subtitles with JSON body: {'url': 'youtube_url'}")
     logger.info("Or GET /extract-subtitles?url=youtube_url for testing")
+    logger.info(f"Configuration loaded from: {Path.home() / '.noticing_game_config.json'}")
+
+    if args.host or args.port:
+        logger.info("Command line arguments override configuration file settings")
 
     # Run the server
     app.run(
-        host='127.0.0.1',
-        port=5000,
-        debug=False,
+        host=host,
+        port=port,
+        debug=debug,
         threaded=True
     )
+
+if __name__ == '__main__':
+    main()

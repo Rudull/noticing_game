@@ -186,7 +186,8 @@ class NoticingGameServerManager:
         self.status_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0))
 
         ttk.Label(status_frame, text="URL:").grid(row=1, column=0, sticky=tk.W)
-        self.url_label = ttk.Label(status_frame, text="http://localhost:5000",
+        server_url = f"http://{self.config.get('server_host', '127.0.0.1')}:{self.config.get('server_port', 5000)}"
+        self.url_label = ttk.Label(status_frame, text=server_url,
                                   foreground="blue", cursor="hand2")
         self.url_label.grid(row=1, column=1, sticky=tk.W, padx=(10, 0))
         self.url_label.bind("<Button-1>", self.open_server_url)
@@ -591,7 +592,10 @@ X-GNOME-Autostart-enabled=true
                 self.start_button.config(state="disabled")
                 self.stop_button.config(state="normal")
                 self.restart_button.config(state="normal")
-                self.status_bar.config(text="Server is running at http://localhost:5000")
+                server_url = f"http://{self.config.get('server_host', '127.0.0.1')}:{self.config.get('server_port', 5000)}"
+                self.status_bar.config(text=f"Server is running at {server_url}")
+                # Update URL label
+                self.url_label.config(text=server_url)
             else:
                 self.start_button.config(state="normal")
                 self.stop_button.config(state="disabled")
@@ -619,13 +623,38 @@ X-GNOME-Autostart-enabled=true
             host = self.config.get('server_host', '127.0.0.1')
             port = self.config.get('server_port', 5000)
 
+            # Valid port range for user applications: 1024-65535 (recommended: 5000-5100)
+            valid_port_range = (1024, 65535)
+            recommended_range = (5000, 5100)
+            if not (valid_port_range[0] <= int(port) <= valid_port_range[1]):
+                msg = (
+                    f"The configured port ({port}) is outside the allowed range ({valid_port_range[0]}-{valid_port_range[1]}).\n"
+                    f"Please select a port between {valid_port_range[0]} and {valid_port_range[1]} in Settings.\n"
+                    f"Recommended range: {recommended_range[0]}-{recommended_range[1]}.\n\n"
+                    "Remember to set the same port in the Noticing Game browser extension."
+                )
+                self.log_message(msg)
+                import tkinter.messagebox as messagebox
+                messagebox.showerror(
+                    "Invalid Port",
+                    msg
+                )
+                return
+
             if not self.is_port_available(host, port):
-                self.log_message(f"Port {port} is already in use. Waiting for it to be released...")
-                # Wait a bit and try again
-                import time
-                time.sleep(2)
-                if not self.is_port_available(host, port):
-                    self.log_message(f"Port {port} is still in use. Server startup may fail.")
+                msg = (
+                    f"Port {port} is already in use. The server could NOT be started.\n\n"
+                    "Please change the port in Settings to a free port.\n"
+                    f"Allowed range: {valid_port_range[0]}-{valid_port_range[1]} (recommended: {recommended_range[0]}-{recommended_range[1]}).\n\n"
+                    "IMPORTANT: The port configured here must match the one set in the Noticing Game browser extension."
+                )
+                self.log_message(msg)
+                import tkinter.messagebox as messagebox
+                messagebox.showerror(
+                    "Port in Use",
+                    msg
+                )
+                return
 
             self.log_message("Starting server...")
 
@@ -690,7 +719,7 @@ X-GNOME-Autostart-enabled=true
                 return {
                     'status': 'running',
                     'service': 'Noticing Game Subtitle Server',
-                    'version': '0.1.0',
+                    'version': '0.1.1',
                     'timestamp': datetime.now().isoformat()
                 }
 
@@ -1064,7 +1093,7 @@ X-GNOME-Autostart-enabled=true
 
     def open_server_url(self, event):
         """Open server URL in browser"""
-        url = f"http://{self.config['server_host']}:{self.config['server_port']}"
+        url = f"http://{self.config.get('server_host', '127.0.0.1')}:{self.config.get('server_port', 5000)}"
         webbrowser.open(url)
         self.log_message(f"Opened {url} in browser")
 
@@ -1142,20 +1171,31 @@ X-GNOME-Autostart-enabled=true
 
             def save_settings():
                 try:
-                    # (El resto de la función save_settings permanece igual)
+                    # Check for changes that require server restart
+                    old_host = self.config.get('server_host', '127.0.0.1')
+                    old_port = self.config.get('server_port', 5000)
                     old_auto_startup = self.config.get('auto_startup_os', False)
                     old_enable_tray = self.config.get('enable_tray', True)
+
+                    new_host = host_var.get()
+                    new_port = int(port_var.get())
 
                     # Save all settings
                     self.config['auto_start'] = auto_start_var.get()
                     self.config['auto_startup_os'] = auto_startup_var.get()
                     self.config['minimize_to_tray'] = minimize_tray_var.get()
                     self.config['enable_tray'] = enable_tray_var.get()
-                    self.config['server_host'] = host_var.get()
-                    self.config['server_port'] = int(port_var.get())
+                    self.config['server_host'] = new_host
+                    self.config['server_port'] = new_port
                     self.config['check_interval'] = int(interval_var.get())
 
                     self.save_config()
+
+                    # Check if server host/port changed and restart if running
+                    if (old_host != new_host or old_port != new_port) and self.is_server_running:
+                        self.log_message(f"Server configuration changed (host: {old_host} -> {new_host}, port: {old_port} -> {new_port})")
+                        self.log_message("Restarting server with new configuration...")
+                        self.restart_server()
 
                     # Handle auto-startup change
                     if old_auto_startup != auto_startup_var.get():
@@ -1231,7 +1271,7 @@ X-GNOME-Autostart-enabled=true
         version_frame.pack(fill=tk.X, pady=(0, 10))
 
         version_info = [
-            ("Version:", "0.1.0"),
+            ("Version:", "0.1.1"),
             ("Author:", "Rafael Hernandez Bustamante"),
             ("License:", "GNU General Public License v3.0 (GPL-3.0)")
         ]

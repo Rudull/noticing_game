@@ -110,6 +110,12 @@ window.UIComponents = (function () {
       existingModal.parentNode.removeChild(existingModal);
     }
 
+    // --- Estado para alternar entre notadas y no notadas ---
+    let currentView = "noted"; // "noted" o "unnoted"
+    let currentWords = learnedWords;
+    let unnotedWords = [];
+    let statsData = null;
+
     function getDifficultyClass(score) {
       if (typeof score !== "number" || isNaN(score))
         return "difficulty-unknown";
@@ -124,12 +130,25 @@ window.UIComponents = (function () {
       return "Hard";
     }
 
-    // Exportar a CSV
-    function exportToCSV(learnedWords) {
-      if (!learnedWords || learnedWords.length === 0) return;
+    // Exportar a CSV (incluyendo todas las palabras)
+    function exportToCSV() {
+      // Obtener todas las palabras (notadas y no notadas)
+      if (
+        !window.WordDifficultyTracker ||
+        typeof window.WordDifficultyTracker.getAllWords !== "function"
+      ) {
+        console.error("WordDifficultyTracker not available for export");
+        return;
+      }
+
+      const allWords = window.WordDifficultyTracker.getAllWords();
+      if (!allWords || allWords.length === 0) {
+        importStatus.textContent = "No word data to export.";
+        return;
+      }
 
       // Ordenar de menor a mayor dificultad
-      const sorted = [...learnedWords].sort((a, b) => {
+      const sorted = [...allWords].sort((a, b) => {
         const da =
           typeof a.difficultyScore === "number" ? a.difficultyScore : 9999;
         const db =
@@ -137,9 +156,10 @@ window.UIComponents = (function () {
         return da - db;
       });
 
-      // Encabezados
+      // Encabezados (agregamos columna de estado)
       const headers = [
         "Word",
+        "Status",
         "DifficultyScore",
         "DifficultyLevel",
         "CorrectClicks",
@@ -151,6 +171,13 @@ window.UIComponents = (function () {
         "FirstSeen",
         "LastSeen",
       ];
+
+      // Función para determinar estado de la palabra
+      function getWordStatus(stats) {
+        if (!stats || stats.totalClicks === 0) return "Unseen";
+        if (stats.correctClicks > 0) return "Noted";
+        return "Unnoticed";
+      }
 
       // Utilidad para obtener etiqueta de dificultad
       function getDifficultyLabel(score) {
@@ -175,12 +202,13 @@ window.UIComponents = (function () {
             String(d.getDate()).padStart(2, "0")
           );
         }
-        // Mostrar 'I' y 'I’m' en mayúscula en exportación
+        // Mostrar 'I' y 'I'm' en mayúscula en exportación
         let exportWord = item.word;
         if (exportWord === "i") exportWord = "I";
         if (exportWord === "i'm") exportWord = "I'm";
         return [
           `"${exportWord.replace(/"/g, '""')}"`,
+          getWordStatus(stats),
           item.difficultyScore != null ? item.difficultyScore : "",
           getDifficultyLabel(item.difficultyScore),
           stats.correctClicks != null ? stats.correctClicks : "",
@@ -201,7 +229,7 @@ window.UIComponents = (function () {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "learned_words.csv";
+      a.download = "noticing_game_words.csv";
       document.body.appendChild(a);
       a.click();
       setTimeout(() => {
@@ -212,6 +240,13 @@ window.UIComponents = (function () {
 
     const modal = document.createElement("div");
     modal.className = "learned-words-modal";
+
+    // --- Contenedor de estadísticas ---
+    const statsContainer = document.createElement("div");
+    statsContainer.className = "learned-words-stats";
+    statsContainer.style.marginBottom = "10px";
+    statsContainer.style.fontSize = "13px";
+    statsContainer.style.color = "var(--secondary-text)";
 
     // Header (primer nivel): título a la izquierda, cerrar a la derecha
     const header = document.createElement("div");
@@ -251,7 +286,7 @@ window.UIComponents = (function () {
     exportBtn.style.fontSize = "13px";
     exportBtn.style.cursor = "pointer";
     exportBtn.style.fontWeight = "bold";
-    exportBtn.onclick = () => exportToCSV(learnedWords);
+    exportBtn.onclick = () => exportToCSV();
 
     // Botón Importar
     const importBtn = document.createElement("button");
@@ -282,6 +317,25 @@ window.UIComponents = (function () {
     resetBtn.style.fontSize = "13px";
     resetBtn.style.cursor = "pointer";
     resetBtn.style.fontWeight = "bold";
+
+    // --- Botón para alternar entre notadas y no notadas ---
+    const toggleBtn = document.createElement("button");
+    toggleBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" class="toggle-icon">
+      <path d="M12,18A6,6 0 0,1 6,12C6,11 6.25,10.03 6.7,9.2L5.24,7.74C4.46,8.97 4,10.43 4,12A8,8 0 0,0 12,20V23L16,19L12,15M12,4V1L8,5L12,9V6A6,6 0 0,1 18,12C18,13 17.75,13.97 17.3,14.8L18.76,16.26C19.54,15.03 20,13.57 20,12A8,8 0 0,0 12,4Z" fill="white"/>
+    </svg>`;
+    toggleBtn.title = "Toggle between noted and unnoticed words";
+    toggleBtn.style.background = "var(--primary-color)";
+    toggleBtn.style.color = "white";
+    toggleBtn.style.border = "none";
+    toggleBtn.style.borderRadius = "4px";
+    toggleBtn.style.padding = "4px 12px";
+    toggleBtn.style.fontSize = "13px";
+    toggleBtn.style.cursor = "pointer";
+    toggleBtn.style.fontWeight = "bold";
+    toggleBtn.style.display = "flex";
+    toggleBtn.style.alignItems = "center";
+    toggleBtn.style.justifyContent = "center";
+    toggleBtn.style.minWidth = "29px";
 
     // Mensaje de estado de importación (derecha)
     const importStatus = document.createElement("div");
@@ -357,6 +411,12 @@ window.UIComponents = (function () {
             // Normalizar 'I' y "I'm"
             if (word === "i") word = "i";
             if (word === "i'm") word = "i'm";
+
+            // Leer el estado de la palabra
+            const status = row[idx["Status"]]
+              ? row[idx["Status"]].replace(/"/g, "")
+              : "";
+
             // Parsear campos numéricos
             function parseNum(val) {
               if (!val) return 0;
@@ -383,6 +443,7 @@ window.UIComponents = (function () {
               totalResponseTime: 0, // No se exporta, se recalcula
               firstSeen: parseDate(row[idx["FirstSeen"]]),
               lastSeen: parseDate(row[idx["LastSeen"]]),
+              status: status, // Guardar el estado
             };
             // Calcular totalResponseTime si hay correctClicks y averageResponseTime
             if (
@@ -446,6 +507,7 @@ window.UIComponents = (function () {
     header.appendChild(closeBtn);
 
     // Sub-header: botones a la izquierda, mensaje a la derecha
+    btnGroup.appendChild(toggleBtn);
     btnGroup.appendChild(exportBtn);
     btnGroup.appendChild(importBtn);
     btnGroup.appendChild(resetBtn);
@@ -457,22 +519,40 @@ window.UIComponents = (function () {
     modal.appendChild(header);
     modal.appendChild(subHeader);
 
+    // --- Añadir el contenedor de estadísticas arriba de la lista ---
+    modal.appendChild(statsContainer);
+
+    // --- Título dinámico para la lista ---
+    const listTitle = document.createElement("div");
+    listTitle.className = "learned-words-list-title";
+    listTitle.style.fontWeight = "bold";
+    listTitle.style.fontSize = "14px";
+    listTitle.style.color = "var(--primary-color)";
+    listTitle.style.marginBottom = "8px";
+    listTitle.style.paddingBottom = "4px";
+    listTitle.style.borderBottom = "1px solid var(--border-color)";
+    listTitle.textContent = "Noted Words";
+    modal.appendChild(listTitle);
+
     // Contenedor para la lista
     const listContainer = document.createElement("div");
     modal.appendChild(listContainer);
 
-    // Función para renderizar la lista de palabras aprendidas
+    // Función para renderizar la lista de palabras (notadas o no notadas)
     function renderList(words) {
       listContainer.innerHTML = "";
       if (!words || words.length === 0) {
         const emptyMsg = document.createElement("div");
         emptyMsg.className = "learned-words-empty";
-        emptyMsg.textContent = "No noted words yet.";
+        emptyMsg.textContent =
+          currentView === "noted"
+            ? "No noted words yet."
+            : "No unnoticed words found.";
         listContainer.appendChild(emptyMsg);
       } else {
         const list = document.createElement("ul");
         list.className = "learned-words-list";
-        // Ordenar de menor a mayor dificultad
+        // Ordenar de menor a mayor dificultad (si aplica)
         [...words]
           .sort((a, b) => {
             const da =
@@ -493,14 +573,17 @@ window.UIComponents = (function () {
             if (displayWord === "i'm") displayWord = "I'm";
             label.textContent = displayWord;
 
-            const diff = document.createElement("span");
-            diff.className =
-              "learned-word-difficulty " +
-              getDifficultyClass(item.difficultyScore);
-            diff.textContent = getDifficultyLabel(item.difficultyScore);
-
             li.appendChild(label);
-            li.appendChild(diff);
+
+            // Solo mostrar dificultad si es una palabra notada
+            if (currentView === "noted") {
+              const diff = document.createElement("span");
+              diff.className =
+                "learned-word-difficulty " +
+                getDifficultyClass(item.difficultyScore);
+              diff.textContent = getDifficultyLabel(item.difficultyScore);
+              li.appendChild(diff);
+            }
 
             list.appendChild(li);
           });
@@ -508,8 +591,63 @@ window.UIComponents = (function () {
       }
     }
 
-    // Render inicial
-    renderList(learnedWords);
+    // --- Función para renderizar estadísticas ---
+    function renderStats(stats) {
+      if (!stats) {
+        statsContainer.innerHTML = "";
+        return;
+      }
+
+      let html = "";
+      // Primera fila
+      html += `<div style="margin-bottom: 4px;">`;
+      if (currentView === "noted") {
+        html += `<b>Total noted words:</b> ${stats.totalNoted} &nbsp;&nbsp; `;
+      } else {
+        html += `<b>Total unnoticed words:</b> ${stats.totalUnnoted} &nbsp;&nbsp; `;
+      }
+      html += `<b>Total shown words:</b> ${stats.totalShown}`;
+      html += `</div>`;
+
+      // Segunda fila
+      html += `<div>`;
+      html += `<b>Words noted:</b> ${stats.totalNoted} &nbsp;&nbsp; `;
+      html += `<b>Success rate:</b> ${stats.totalShown > 0 ? ((stats.totalNoted / stats.totalShown) * 100).toFixed(1) : "0"}%`;
+      html += `</div>`;
+      statsContainer.innerHTML = html;
+    }
+
+    // --- Obtener palabras no notadas y estadísticas ---
+    function refreshModalData() {
+      if (
+        window.WordDifficultyTracker &&
+        typeof window.WordDifficultyTracker.getModalStats === "function" &&
+        typeof window.WordDifficultyTracker.getLearnedWords === "function" &&
+        typeof window.WordDifficultyTracker.getUnnotedWords === "function"
+      ) {
+        statsData = window.WordDifficultyTracker.getModalStats();
+        currentWords = window.WordDifficultyTracker.getLearnedWords();
+        unnotedWords = window.WordDifficultyTracker.getUnnotedWords();
+        renderList(currentView === "noted" ? currentWords : unnotedWords);
+      }
+    }
+
+    // --- Alternar vista al hacer clic en el botón ---
+    toggleBtn.onclick = function () {
+      if (currentView === "noted") {
+        currentView = "unnoted";
+        listTitle.textContent = "Unnoticed Words";
+      } else {
+        currentView = "noted";
+        listTitle.textContent = "Noted Words";
+      }
+      refreshModalData();
+      renderStats(statsData);
+    };
+
+    // --- Render inicial ---
+    refreshModalData();
+    renderStats(statsData);
 
     document.body.appendChild(modal);
     return modal;

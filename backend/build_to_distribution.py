@@ -132,6 +132,32 @@ def clean_distribution_directory():
 
     print("✅ Distribution directory cleaned")
 
+import threading
+import time
+
+def run_with_spinner(cmd, cwd=None):
+    spinner = ['|', '/', '-', '\\']
+    done = False
+
+    def target():
+        nonlocal done
+        try:
+            subprocess.run(cmd, cwd=cwd, check=True)
+        finally:
+            done = True
+
+    thread = threading.Thread(target=target)
+    thread.start()
+
+    i = 0
+    while not done:
+        sys.stdout.write(f"\r⏳ Build en progreso... {spinner[i % len(spinner)]}")
+        sys.stdout.flush()
+        time.sleep(0.2)
+        i += 1
+    sys.stdout.write("\r✅ Build finalizado.                      \n")
+    thread.join()
+
 def run_build_script(target_platform, args):
     """Run the appropriate build script"""
     print(f"🚀 Starting build for platform: {target_platform}")
@@ -158,9 +184,9 @@ def run_build_script(target_platform, args):
     print(f"💻 Running: {' '.join(cmd[1:])}")
     print()
 
-    # Run the build script
+    # Run the build script with spinner
     try:
-        result = subprocess.run(cmd, check=True, cwd=str(build_script.parent))
+        run_with_spinner(cmd, cwd=str(build_script.parent))
         print()
         print("✅ Build script completed successfully!")
         return True

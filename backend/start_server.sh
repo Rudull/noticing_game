@@ -184,6 +184,11 @@ print_startup_info() {
     echo "   Health Check: http://$host:$port/"
     echo "   Extract Subtitles: http://$host:$port/extract-subtitles"
     echo
+    echo "📝 CONFIGURATION:"
+    echo "   The server reads host and port from ~/.noticing_game_config.json"
+    echo "   If no config file exists, defaults to 127.0.0.1:5000"
+    echo "   Use the desktop app Settings to configure host and port"
+    echo
     echo "📚 USAGE:"
     echo "   POST /extract-subtitles"
     echo '   Body: {"url": "https://www.youtube.com/watch?v=VIDEO_ID"}'
@@ -296,6 +301,14 @@ main() {
 
     check_port "$HOST" "$PORT"
     print_startup_info "$HOST" "$PORT"
+
+    # Show configuration source
+    config_file="$HOME/.noticing_game_config.json"
+    if [ -f "$config_file" ]; then
+        print_info "Using configuration from: $config_file"
+    else
+        print_info "Using default configuration (no config file found)"
+    fi
 
     echo "🎬 Server is starting..."
     echo "   Waiting for requests..."

@@ -17,7 +17,30 @@ import os
 import argparse
 import subprocess
 import platform
+import json
 from pathlib import Path
+
+def load_config():
+    """Load configuration from file"""
+    default_config = {
+        'server_host': '127.0.0.1',
+        'server_port': 5000
+    }
+
+    config_file = Path.home() / ".noticing_game_config.json"
+
+    if config_file.exists():
+        try:
+            with open(config_file, 'r') as f:
+                config = json.load(f)
+                # Merge with defaults to ensure all keys exist
+                return {**default_config, **config}
+        except Exception as e:
+            print(f"⚠️  Warning: Error loading config from {config_file}: {e}")
+            print("Using default configuration")
+            return default_config
+    else:
+        return default_config
 
 def print_banner():
     """Print the startup banner"""
@@ -166,9 +189,12 @@ def print_startup_info(host, port):
 
 def main():
     """Main startup function"""
+    # Load configuration from file first
+    config = load_config()
+
     parser = argparse.ArgumentParser(description="Start the Noticing Game subtitle server")
-    parser.add_argument("--host", default="127.0.0.1", help="Host to bind to (default: 127.0.0.1)")
-    parser.add_argument("--port", type=int, default=5000, help="Port to bind to (default: 5000)")
+    parser.add_argument("--host", default=config['server_host'], help=f"Host to bind to (default: {config['server_host']})")
+    parser.add_argument("--port", type=int, default=config['server_port'], help=f"Port to bind to (default: {config['server_port']})")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument("--auto-install", action="store_true", help="Automatically install missing dependencies")
     parser.add_argument("--system-info", action="store_true", help="Print system information and exit")
@@ -213,6 +239,16 @@ def main():
 
     # Print startup information
     print_startup_info(args.host, args.port)
+
+    # Show if using config file or command line arguments
+    if args.host != config['server_host'] or args.port != config['server_port']:
+        print("💡 Using command line arguments (overriding config file)")
+    else:
+        config_file = Path.home() / ".noticing_game_config.json"
+        if config_file.exists():
+            print(f"📁 Using configuration from: {config_file}")
+        else:
+            print("📁 Using default configuration (no config file found)")
 
     try:
         # Import and start the server

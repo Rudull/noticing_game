@@ -1,3 +1,5 @@
+// ServerVersionCheck se carga automáticamente a través del manifest.json
+
 // Gestor principal de la interfaz de usuario para Noticing Game
 window.UIManager = (function () {
   // Referencias a los distintos módulos con validación
@@ -56,6 +58,22 @@ window.UIManager = (function () {
       return existingPanel;
     }
 
+    // Verificación de versión del servidor SOLO al abrir el panel (modal)
+    if (
+      window.ServerVersionCheck &&
+      typeof window.ServerVersionCheck.checkServerVersion === "function"
+    ) {
+      window.ServerVersionCheck.checkServerVersion().then((result) => {
+        // Solo mostrar el modal si está desactualizado
+        if (result && result.ok && result.outdated) {
+          window.ServerVersionCheck.showOutdatedWarning(
+            result.serverVersion,
+            result.minVersion,
+          );
+        }
+      });
+    }
+
     const WLM = getWLM();
     const UI = getUI();
     const PM = getPM();
@@ -65,6 +83,22 @@ window.UIManager = (function () {
     if (!WLM || !UI || !PM || !GL) {
       console.error("Required modules not available for panel creation");
       return null;
+    }
+
+    // Verificación de versión del servidor al crear el panel
+    if (
+      window.ServerVersionCheck &&
+      typeof window.ServerVersionCheck.checkServerVersion === "function"
+    ) {
+      window.ServerVersionCheck.checkServerVersion().then((result) => {
+        // Solo mostrar el modal si está desactualizado
+        if (result && result.ok && result.outdated) {
+          window.ServerVersionCheck.showOutdatedWarning(
+            result.serverVersion,
+            result.minVersion,
+          );
+        }
+      });
     }
 
     // Asegurarnos de que tenemos los datos más recientes
@@ -111,8 +145,8 @@ window.UIManager = (function () {
       {
         title: "Settings & Help",
         innerHTML: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" class="settings-icon">
-  <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
-  <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/>
+<path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
+<path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/>
 </svg>`,
       },
     );
@@ -132,7 +166,7 @@ window.UIManager = (function () {
       {
         title: "Rate this extension",
         innerHTML: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" class="star-icon">
-  <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/>
+<path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/>
 </svg>`,
       },
     );
@@ -150,7 +184,7 @@ window.UIManager = (function () {
       {
         title: "Donate to project",
         innerHTML: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" class="heart-icon">
-  <path fill-rule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314z"/>
+<path fill-rule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314z"/>
 </svg>`,
       },
     );
@@ -175,11 +209,11 @@ window.UIManager = (function () {
           );
           if (toggleBtn) {
             toggleBtn.innerHTML = `
-              <svg width="48" height="48" viewBox="0 0 48 48" style="display:block;margin:auto;">
-                <rect x="4" y="15" rx="9" ry="9" width="40" height="18" fill="rgba(101,68,233,0.18)"/>
-                <circle cx="13" cy="24" r="9" fill="rgba(255,255,255,0.35)"/>
-              </svg>
-            `;
+      <svg width="48" height="48" viewBox="0 0 48 48" style="display:block;margin:auto;">
+        <rect x="4" y="15" rx="9" ry="9" width="40" height="18" fill="rgba(101,68,233,0.18)"/>
+        <circle cx="13" cy="24" r="9" fill="rgba(255,255,255,0.35)"/>
+      </svg>
+    `;
             toggleBtn.dataset.state = "off";
           }
         }
@@ -187,8 +221,8 @@ window.UIManager = (function () {
       {
         title: "Close",
         innerHTML: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" class="close-icon">
-          <path d="M2.5 2.5l11 11m0-11l-11 11" stroke="#e0e0e0" stroke-width="2" stroke-linecap="round"/>
-        </svg>`,
+  <path d="M2.5 2.5l11 11m0-11l-11 11" stroke="#e0e0e0" stroke-width="2" stroke-linecap="round"/>
+</svg>`,
       },
     );
 
@@ -387,7 +421,7 @@ window.UIManager = (function () {
                     }).join("")}
                   </select>
                 </div>
-                <div class="grid-config-row">
+                <div class="grid-config-row" style="margin-bottom: 10px;">
                   <label for="word-clicks-to-overcome-select" style="font-weight: bold; color: var(--text-color);" title="How many times you must notice a word before it is considered 'overcome' and replaced by a new one.">Times to overcome a word:</label>
                   <select id="word-clicks-to-overcome-select" class="noticing-game-other-select" title="How many times you must notice a word before it is considered 'overcome' and replaced by a new one." style="margin-left: 10px;">
                     ${Array.from({ length: 6 }, (_, i) => {
@@ -396,6 +430,17 @@ window.UIManager = (function () {
                       return `<option value="${value}" ${selected}>${value}</option>`;
                     }).join("")}
                   </select>
+                </div>
+                <div class="grid-config-row" style="margin-bottom: 10px;">
+                  <label for="pause-time-toggle" style="font-weight: bold; color: var(--text-color);" title="When enabled, word timers pause when the video is paused, giving you unlimited time to notice words while the video is stopped.">Pause timers when video stops:</label>
+                  <label class="pause-time-switch" style="margin-left: 10px;">
+                    <input type="checkbox" id="pause-time-toggle" title="When enabled, word timers pause when the video is paused, giving you unlimited time to notice words while the video is stopped.">
+                    <span class="pause-time-slider"></span>
+                  </label>
+                </div>
+                <div class="grid-config-row">
+                  <label for="backend-port-input" style="font-weight: bold; color: var(--text-color);" title="Port where the Subtitle Server is running. Valid range: 1024-65535. Change this if you configured the server to run on a different port.">Subtitle Server port:</label>
+                  <input type="number" id="backend-port-input" class="noticing-game-other-select" title="Port where the Subtitle Server is running. Valid range: 1024-65535. Change this if you configured the server to run on a different port." style="margin-left: 10px; text-align: center;" min="1024" max="65535" value="5000">
                 </div>
               </div>
 
@@ -414,11 +459,12 @@ window.UIManager = (function () {
                       </ul>
                   </li>
                   <li>After clicking a word ${GL.CLICKS_TO_REPLACE_WORD} times correctly, it will be replaced with a new word</li>
+                  <li><strong>Easy Mode:</strong> Enable "Pause timers when video stops" in settings to pause word timers when you pause the video, giving you unlimited time to notice words while the video is stopped.</li>
                   <li>Your goal is to identify as many words as possible to increase your score!</li>
               </ol>
 
               <h3>About Noticing Game</h3>
-              <p><strong>Version:</strong> 0.2.2</p>
+              <p><strong>Version:</strong> 0.3.2</p>
               <p><strong>Developed by:</strong> Rafael Hernandez Bustamante</p>
               <p><strong>Contact:</strong> <a href="https://www.linkedin.com/in/rafaelhernandezbustamante" target="_blank">LinkedIn</a></p>
               <p><strong>Project:</strong> <a href="https://github.com/Rudull" target="_blank">GitHub</a></p>
@@ -783,6 +829,145 @@ window.UIManager = (function () {
         });
       }
 
+      // --- Pause time toggle logic ---
+      const pauseTimeToggle = panel.querySelector("#pause-time-toggle");
+      if (pauseTimeToggle) {
+        // Cargar valor guardado
+        chrome.storage.local.get(
+          ["pauseTimeWhenVideoStops"],
+          function (result) {
+            const savedState = result.pauseTimeWhenVideoStops || false;
+            pauseTimeToggle.checked = savedState;
+
+            // Sincronizar con el interruptor del video al cargar
+            if (window.syncPauseToggleFromConfig) {
+              setTimeout(() => {
+                window.syncPauseToggleFromConfig(savedState);
+              }, 500); // Dar tiempo para que se cree el interruptor del video
+            }
+          },
+        );
+
+        // Al cambiar, guardar y aplicar
+        pauseTimeToggle.addEventListener("change", function () {
+          const newState = this.checked;
+          chrome.storage.local.set(
+            { pauseTimeWhenVideoStops: newState },
+            function () {
+              // Notificar al módulo WordDetection
+              if (
+                window.WordDetection &&
+                typeof window.WordDetection.setPauseTimeWhenVideoStops ===
+                  "function"
+              ) {
+                window.WordDetection.setPauseTimeWhenVideoStops(newState);
+              }
+
+              // Sincronizar el interruptor del video
+              if (window.syncPauseToggleFromConfig) {
+                setTimeout(() => {
+                  window.syncPauseToggleFromConfig(newState);
+                }, 100);
+              }
+
+              // Mostrar mensaje de confirmación
+              const statusElem = document.querySelector(
+                ".noticing-game-status",
+              );
+              if (statusElem) {
+                const oldText = statusElem.textContent;
+                statusElem.textContent = `Pause timers when video stops: ${newState ? "ON" : "OFF"}`;
+                statusElem.style.color = "#4caf50";
+                setTimeout(() => {
+                  statusElem.textContent = oldText;
+                  statusElem.style.color = "";
+                }, 3000);
+              }
+            },
+          );
+        });
+      }
+
+      // --- Backend port input logic ---
+      const backendPortInput = panel.querySelector("#backend-port-input");
+      if (backendPortInput) {
+        // Cargar valor guardado
+        chrome.storage.local.get(["backendServerPort"], function (result) {
+          const savedPort = result.backendServerPort || 5000;
+          backendPortInput.value = savedPort;
+        });
+
+        // Función para validar puerto
+        const validatePort = (port) => {
+          const portNum = parseInt(port);
+          if (isNaN(portNum) || portNum < 1024 || portNum > 65535) {
+            return false;
+          }
+          return true;
+        };
+
+        // Al cambiar, validar, guardar y recargar la configuración del backend
+        const handlePortChange = function () {
+          const newPort = parseInt(this.value) || 5000;
+
+          // Validar rango de puerto
+          if (!validatePort(newPort)) {
+            // Mostrar error
+            this.style.borderColor = "#ff4c4c";
+            const statusElem = document.querySelector(".noticing-game-status");
+            if (statusElem) {
+              const oldText = statusElem.textContent;
+              statusElem.textContent = `Invalid port number. Please enter a value between 1024 and 65535.`;
+              statusElem.style.color = "#ff4c4c";
+              setTimeout(() => {
+                statusElem.textContent = oldText;
+                statusElem.style.color = "";
+              }, 4000);
+            }
+            // Restaurar valor anterior
+            chrome.storage.local.get(["backendServerPort"], function (result) {
+              const savedPort = result.backendServerPort || 5000;
+              backendPortInput.value = savedPort;
+              backendPortInput.style.borderColor = "";
+            });
+            return;
+          }
+
+          // Puerto válido
+          this.style.borderColor = "";
+
+          chrome.storage.local.set({ backendServerPort: newPort }, function () {
+            // Recargar la configuración del puerto en SubtitleExtraction
+            if (
+              window.SubtitleExtraction &&
+              typeof window.SubtitleExtraction.loadBackendPort === "function"
+            ) {
+              window.SubtitleExtraction.loadBackendPort().then(() => {
+                console.log(`Backend port updated to: ${newPort}`);
+
+                // Mostrar mensaje de confirmación
+                const statusElem = document.querySelector(
+                  ".noticing-game-status",
+                );
+                if (statusElem) {
+                  const oldText = statusElem.textContent;
+                  statusElem.textContent = `Subtitle Server port changed to: ${newPort}`;
+                  statusElem.style.color = "#4caf50";
+                  setTimeout(() => {
+                    statusElem.textContent = oldText;
+                    statusElem.style.color = "";
+                  }, 3000);
+                }
+              });
+            }
+          });
+        };
+
+        // Escuchar eventos de cambio y blur
+        backendPortInput.addEventListener("change", handlePortChange);
+        backendPortInput.addEventListener("blur", handlePortChange);
+      }
+
       // Event listener para importar lista
       const importButton = panel.querySelector("#import-list-button");
       const importFile = panel.querySelector("#import-list-file");
@@ -891,7 +1076,7 @@ window.UIManager = (function () {
       const totalWordsToShow = columns * rows;
 
       console.log(
-        `Displaying words with grid configuration: ${columns}x${rows} = ${totalWordsToShow} words`,
+        `GameLogic: Initialized game with ${totalWordsToShow} displayed words out of ${words.length} total words`,
       );
 
       // Inicializar el juego con la nueva configuración

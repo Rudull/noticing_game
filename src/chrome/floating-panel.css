@@ -35,10 +35,10 @@
     right: 20px;
     width: 450px; /* Ancho inicial */
     height: 460px; /* Altura inicial */
-    min-width: 300px; /* Ancho mínimo aumentado para matrices más grandes */
+    min-width: 200px; /* Ancho mínimo reducido para permitir tamaños más pequeños */
     min-height: 200px; /* Altura mínima aumentada */
-    max-width: 90vw; /* Máximo ancho responsivo */
-    max-height: 90vh; /* Máxima altura responsiva */
+    max-width: 1920px; /* Máximo ancho fijo */
+    max-height: 100vh; /* Usar todo el alto de la ventana */
     background-color: var(--panel-bg);
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -67,7 +67,7 @@
     color: var(--header-text);
     padding: 10px;
     display: flex;
-    justify-content: center; /* Center title */
+    justify-content: space-between; /* Title left, buttons right */
     align-items: center;
     position: relative; /* To allow absolute positioning of buttons */
 }
@@ -147,7 +147,8 @@
     border-top: 1px solid var(--border-color);
     box-shadow: 0 4px 8px var(--shadow-color);
     z-index: 1;
-    max-height: 80vh;
+    max-height: 100vh;
+    height: 100%;
     overflow-y: auto;
     min-width: 350px; /* Ancho mínimo para todo el contenido */
 }
@@ -192,12 +193,14 @@
     font-size: 16px;
     font-weight: bold;
     margin: 0;
-    /* No need for positioning as it's now centered by the parent */
+    text-align: left;
 }
 
 .noticing-game-content {
     padding: 15px;
-    max-height: calc(100vh - 200px); /* Altura dinámica basada en viewport */
+    max-height: calc(
+        100% - 60px
+    ); /* Ajusta según el alto del header y paddings */
     min-height: 300px;
     overflow-y: auto;
 }
@@ -475,14 +478,45 @@
     color: var(--text-color);
 }
 
-.grid-config-row select {
+.grid-config-row select,
+.noticing-game-other-select {
     flex: 0 0 80px;
+    width: 80px !important;
+    min-width: 80px;
+    max-width: 80px;
     padding: 5px;
     background-color: var(--panel-bg);
     color: var(--text-color);
     border: 1px solid var(--border-color);
     border-radius: 4px;
     font-size: 14px;
+    box-sizing: border-box;
+}
+
+/* Additional styles for input with number type */
+.noticing-game-other-select[type="number"] {
+    transition: border-color 0.2s ease;
+}
+
+.noticing-game-other-select[type="number"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(101, 68, 233, 0.2);
+}
+
+.noticing-game-other-select[type="number"]:invalid {
+    border-color: #ff4c4c;
+}
+
+/* Remove spinner arrows from number input */
+.noticing-game-other-select[type="number"]::-webkit-outer-spin-button,
+.noticing-game-other-select[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.noticing-game-other-select[type="number"] {
+    -moz-appearance: textfield;
 }
 
 .grid-preview {
@@ -566,6 +600,91 @@
 
 .delete-list-btn:hover {
     background-color: #666 !important;
+}
+
+/* Estilos para el interruptor de pausa de tiempo */
+.pause-time-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+    flex: 0 0 50px;
+    min-width: 50px;
+    max-width: 50px;
+}
+
+.pause-time-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.pause-time-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.3s;
+    border-radius: 12px;
+}
+
+.pause-time-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+input:checked + .pause-time-slider {
+    background-color: var(--primary-color);
+}
+
+input:focus + .pause-time-slider {
+    box-shadow: 0 0 1px var(--primary-color);
+}
+
+input:checked + .pause-time-slider:before {
+    transform: translateX(26px);
+}
+
+/* Hover effect para el switch */
+.pause-time-switch:hover .pause-time-slider {
+    opacity: 0.8;
+}
+
+/* Estilos para el interruptor flotante de pausa en el video */
+.noticing-game-pause-toggle {
+    position: absolute;
+    top: calc(50% + 52px); /* Posicionado debajo del interruptor principal */
+    left: auto;
+    right: 12px; /* Misma posición horizontal que el principal */
+    transform: translateY(-50%);
+    z-index: 10010;
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    width: 48px;
+    height: 48px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.noticing-game-pause-toggle[data-state="disabled"] {
+    opacity: 0.3;
+    cursor: not-allowed;
 }
 
 /* Diálogo de confirmación */

@@ -35,7 +35,7 @@ def read_requirements():
 
 setup(
     name="noticing-game-backend",
-    version="0.1.0",
+    version="0.1.1",
     author="Rafael Hernandez Bustamante",
     author_email="laboratorio.rudull@gmail.com",  # Update with actual email
     description="Backend server for Noticing Game Chrome extension - YouTube subtitle extraction",

@@ -78,13 +78,19 @@ echo ✅ Dependencies installed successfully!
 :START_SERVER
 echo.
 echo 🚀 STARTING SERVER...
-echo    Host: 127.0.0.1
-echo    Port: 5000
-echo    URL: http://127.0.0.1:5000
+echo    Configuration: Reading from %USERPROFILE%\.noticing_game_config.json
+echo    Default Host: 127.0.0.1
+echo    Default Port: 5000
+echo    URL: Check desktop app or config file for current settings
 echo.
 echo 📋 AVAILABLE ENDPOINTS:
-echo    Health Check: http://127.0.0.1:5000/
-echo    Extract Subtitles: http://127.0.0.1:5000/extract-subtitles
+echo    Health Check: http://[configured_host]:[configured_port]/
+echo    Extract Subtitles: http://[configured_host]:[configured_port]/extract-subtitles
+echo.
+echo 📝 CONFIGURATION:
+echo    The server reads host and port from %USERPROFILE%\.noticing_game_config.json
+echo    If no config file exists, defaults to 127.0.0.1:5000
+echo    Use the desktop app Settings to configure host and port
 echo.
 echo 📚 USAGE:
 echo    POST /extract-subtitles

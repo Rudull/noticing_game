@@ -438,6 +438,62 @@ window.WordDifficultyTracker = (function () {
       }));
   }
 
+  // Obtener palabras no notadas (mostradas pero nunca clickeadas correctamente)
+  function getUnnotedWords() {
+    // Devuelve un array de objetos { word, stats, difficultyScore }
+    return Object.entries(wordStats)
+      .filter(
+        ([word, stats]) => stats.totalClicks > 0 && stats.correctClicks === 0,
+      )
+      .map(([word, stats]) => ({
+        word,
+        stats,
+        difficultyScore: stats.difficultyScore,
+      }));
+  }
+
+  // Obtener todas las palabras (notadas, no notadas y sin intentos)
+  function getAllWords() {
+    return Object.entries(wordStats).map(([word, stats]) => ({
+      word,
+      stats,
+      difficultyScore: stats.difficultyScore,
+      hasHistory: stats.totalClicks > 0,
+      isNoted: stats.correctClicks > 0,
+      isUnnoticed: stats.totalClicks > 0 && stats.correctClicks === 0,
+    }));
+  }
+
+  // Obtener estadísticas para el modal de palabras
+  function getModalStats() {
+    const learnedWords = getLearnedWords();
+    const unnotedWords = getUnnotedWords();
+    const totalWords = Object.keys(wordStats).length;
+
+    return {
+      totalNoted: learnedWords.length,
+      totalUnnoted: unnotedWords.length,
+      totalShown: totalWords,
+      avgDifficulty:
+        learnedWords.length > 0
+          ? learnedWords.reduce((a, b) => a + (b.difficultyScore || 0), 0) /
+            learnedWords.length
+          : 0,
+      hardestWord:
+        learnedWords.length > 0
+          ? learnedWords.reduce((a, b) =>
+              (b.difficultyScore || 0) > (a.difficultyScore || 0) ? b : a,
+            ).word
+          : null,
+      easiestWord:
+        learnedWords.length > 0
+          ? learnedWords.reduce((a, b) =>
+              (b.difficultyScore || 0) < (a.difficultyScore || 0) ? b : a,
+            ).word
+          : null,
+    };
+  }
+
   // Exportar API pública
   return {
     recordWordClick,
@@ -452,5 +508,8 @@ window.WordDifficultyTracker = (function () {
     saveWordStats,
     cleanupOldData,
     getLearnedWords,
+    getUnnotedWords,
+    getModalStats,
+    getAllWords,
   };
 })();

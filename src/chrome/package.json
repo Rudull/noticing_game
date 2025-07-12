@@ -1,10 +1,10 @@
 {
-    "name": "noticing-game",
-    "version": "0.2.2",
-    "description": "Enhance your target language learning by detecting frequently asked words from a custom list within YouTube video subtitles, enabling interactive vocabulary practice.",
-    "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "author": "Rafael Hernandez Bustamante",
-    "license": "GNU General Public License v3.0 (GPL-3.0)"
+  "name": "noticing-game",
+  "version": "0.3.2",
+  "description": "Enhance your target language learning by detecting frequently asked words from a custom list within YouTube video subtitles, enabling interactive vocabulary practice.",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Rafael Hernandez Bustamante",
+  "license": "GNU General Public License v3.0 (GPL-3.0)"
 }

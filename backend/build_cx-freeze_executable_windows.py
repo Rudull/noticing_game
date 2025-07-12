@@ -385,18 +385,12 @@ def build_executable(setup_file, build_root=True):
     print(f"Working directory: {backend_dir}")
 
     try:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True, cwd=str(backend_dir))
+        run_with_spinner(cmd, cwd=str(backend_dir))
         print("✅ Build completed successfully!")
         return True
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         print("❌ Build failed!")
         print(f"Error: {e}")
-        if e.stdout:
-            print("STDOUT:")
-            print(e.stdout)
-        if e.stderr:
-            print("STDERR:")
-            print(e.stderr)
         return False
 
 def test_executable(build_root=True):

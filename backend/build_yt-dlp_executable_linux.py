@@ -27,6 +27,31 @@ import shutil
 import tempfile
 from pathlib import Path
 import platform
+import threading
+import time
+
+def run_with_spinner(cmd, cwd=None):
+    spinner = ['|', '/', '-', '\\']
+    done = False
+
+    def target():
+        nonlocal done
+        try:
+            subprocess.run(cmd, cwd=cwd, check=True)
+        finally:
+            done = True
+
+    thread = threading.Thread(target=target)
+    thread.start()
+
+    i = 0
+    while not done:
+        sys.stdout.write(f"\r⏳ Build en progreso... {spinner[i % len(spinner)]}")
+        sys.stdout.flush()
+        time.sleep(0.2)
+        i += 1
+    sys.stdout.write("\r✅ Build finalizado.                      \n")
+    thread.join()
 
 def find_project_root():
     """Find the correct project root directory"""
@@ -389,18 +414,12 @@ def build_executable(spec_file, clean=False, build_root=True, use_distribution_d
     print(f"Output will be in: {dist_dir}")
 
     try:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True, cwd=str(backend_dir))
+        run_with_spinner(cmd, cwd=str(backend_dir))
         print("✅ Build completed successfully!")
         return True
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         print("❌ Build failed!")
         print(f"Error: {e}")
-        if e.stdout:
-            print("STDOUT:")
-            print(e.stdout)
-        if e.stderr:
-            print("STDERR:")
-            print(e.stderr)
         return False
 
 def test_executable(build_root=True, use_distribution_dir=False):

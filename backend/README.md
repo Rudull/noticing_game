@@ -43,11 +43,11 @@ pip install -r requirements.txt
 python subtitle_server.py
 ```
 
-The server will start on `http://localhost:5000`
+The server will start using the configured host and port (default: `http://localhost:5000`)
 
 ### 3. Test the Server
 
-Open your browser and visit:
+Open your browser and visit (using your configured host and port):
 ```
 http://localhost:5000/extract-subtitles?url=https://www.youtube.com/watch?v=VIDEO_ID
 ```
@@ -102,7 +102,7 @@ Health check endpoint.
 {
   "status": "running",
   "service": "Noticing Game Subtitle Server",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "timestamp": "2023-12-01T10:30:00"
 }
 ```
@@ -115,7 +115,7 @@ Server information endpoint with version, author, and license details.
 ```json
 {
   "name": "Noticing Game - Subtitle Extraction Server",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Backend server using yt-dlp to extract YouTube subtitles for the Noticing Game extension",
   "author": "Rafael Hernandez Bustamante",
   "license": "GNU General Public License v3.0 (GPL-3.0)",
@@ -190,7 +190,7 @@ curl "http://localhost:5000/extract-subtitles?url=https://www.youtube.com/watch?
 import requests
 
 # Extract subtitles
-response = requests.post('http://localhost:5000/extract-subtitles', 
+response = requests.post('http://localhost:5000/extract-subtitles',
                         json={'url': 'https://www.youtube.com/watch?v=VIDEO_ID'})
 
 data = response.json()
@@ -208,11 +208,35 @@ The Chrome extension automatically communicates with this server. Make sure the 
 
 ### Server Configuration
 
-Edit `subtitle_server.py` to modify:
+The server reads its configuration from `~/.noticing_game_config.json`. You can configure:
 
-- **Host:** Change `host='127.0.0.1'` to `host='0.0.0.0'` for external access
-- **Port:** Change `port=5000` to your preferred port
-- **Debug:** Set `debug=True` for development
+- **Host:** Default is `127.0.0.1`. Use `0.0.0.0` for external access
+- **Port:** Default is `5000`. Change to your preferred port
+- **Debug:** Default is `false`. Set to `true` for development
+
+#### Configuration Methods:
+
+1. **Desktop App Settings (Recommended):**
+   - Open the desktop app (`python desktop_app.py`)
+   - Click "Settings" button
+   - Configure host and port
+   - Changes are saved automatically and server restarts if running
+
+2. **Manual Configuration File:**
+   Create or edit `~/.noticing_game_config.json`:
+   ```json
+   {
+     "server_host": "127.0.0.1",
+     "server_port": 8080,
+     "debug": false
+   }
+   ```
+
+3. **Command Line Arguments:**
+   ```bash
+   python subtitle_server.py --host 0.0.0.0 --port 8080 --debug
+   python start_server.py --host 0.0.0.0 --port 8080
+   ```
 
 ### yt-dlp Configuration
 
@@ -284,8 +308,9 @@ The backend includes a desktop GUI application (`desktop_app.py`) that provides:
 - **System tray integration**: Runs in background with colored status indicator
 - **Auto-startup**: Configure to start with your operating system
 - **Real-time monitoring**: Live server status and log viewing
-- **Settings management**: Configure host, port, and other options
+- **Settings management**: Configure host, port, and other options with automatic restart
 - **About dialog**: Version information and server details
+- **Configuration persistence**: All settings are saved to `~/.noticing_game_config.json`
 
 ### Running the Desktop App
 
@@ -298,6 +323,14 @@ python desktop_app.py
 - **Violet circle**: Server is running
 - **Gray circle**: Server is stopped
 - **Right-click**: Access menu options
+
+### Configuration Management
+
+The desktop app automatically:
+- Reads configuration from `~/.noticing_game_config.json`
+- Saves changes to host/port settings
+- Restarts the server when host/port changes (if running)
+- Updates all URLs and status displays with new configuration
 
 ## Development
 
@@ -333,6 +366,10 @@ flake8 subtitle_server.py
 backend/
 ├── desktop_app.py           # Desktop GUI application
 ├── subtitle_server.py       # Main server application
+├── show_config.py           # Configuration display utility
+├── start_server.py          # Cross-platform server startup script
+├── start_server.bat         # Windows server startup script
+├── start_server.sh          # Linux/macOS server startup script
 ├── requirements.txt         # Python dependencies
 ├── setup.py                # Package setup
 ├── README.md               # This file
@@ -341,12 +378,42 @@ backend/
 └── tests/                  # Test files (if any)
 ```
 
+## Configuration Management
+
+### View Current Configuration
+
+To see your current configuration settings:
+
+```bash
+python show_config.py
+```
+
+This displays:
+- Configuration file location and status
+- Current server host and port settings
+- Application preferences
+- Desktop app settings
+- Configuration tips and guidance
+
+### Configuration File Location
+
+- **Windows:** `%USERPROFILE%\.noticing_game_config.json`
+- **Linux/macOS:** `~/.noticing_game_config.json`
+
+### Configuration Priority
+
+1. Command line arguments (highest priority)
+2. Configuration file settings
+3. Default values (lowest priority)
+
 ## Security Considerations
 
-- The server runs on localhost by default (127.0.0.1)
+- The server runs on localhost by default (127.0.0.1:5000)
+- Host and port are configurable via desktop app settings
 - Only accepts requests from browser extensions via CORS
 - No authentication required for local use
 - For production use, consider adding authentication
+- When changing host to 0.0.0.0, ensure firewall rules are appropriate
 
 ## Performance
 
@@ -386,7 +453,7 @@ For issues and questions:
 The project includes scripts to build standalone executables:
 
 - `build_executable_windows.py` - Windows executable with PyInstaller
-- `build_executable_linux.py` - Linux/macOS executable with PyInstaller  
+- `build_executable_linux.py` - Linux/macOS executable with PyInstaller
 - `build_cx_freeze_windows.py` - Windows executable with cx_Freeze
 
 ### Building
@@ -429,7 +496,7 @@ The application uses icons from the `../assets/` directory:
 
 ## Changelog
 
-### Version 0.1.0
+### Version 0.1.1
 - Initial release
 - Basic subtitle extraction with yt-dlp
 - Flask REST API with `/info` endpoint
