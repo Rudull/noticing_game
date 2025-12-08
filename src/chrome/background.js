@@ -261,6 +261,81 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
     return true;
   }
+
+  // --- Proxy handlers for Local Server communication (Bypass Mixed Content) ---
+
+  if (request.action === "checkServerStatus") {
+    const backendUrl = request.backendUrl || "http://localhost:5000";
+
+    fetch(`${backendUrl}/`)
+      .then(response => {
+        if (response.ok) return response.json();
+        throw new Error("Server response not ok");
+      })
+      .then(data => {
+        sendResponse({
+          success: true,
+          isOnline: data.status === "running",
+          data: data
+        });
+      })
+      .catch(error => {
+        sendResponse({
+          success: false,
+          isOnline: false,
+          error: error.message
+        });
+      });
+    return true; // Keep channel open for async response
+  }
+
+  if (request.action === "extractSubtitles") {
+    const backendUrl = request.backendUrl || "http://localhost:5000";
+    const videoUrl = request.videoUrl;
+
+    fetch(`${backendUrl}/extract-subtitles`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ url: videoUrl }),
+    })
+      .then(response => {
+        if (!response.ok) {
+          // Try to parse error message if possible
+          return response.json().then(errData => {
+            throw new Error(errData.error || `Server error: ${response.status}`);
+          }).catch(() => {
+            throw new Error(`Server error: ${response.status}`);
+          });
+        }
+        return response.json();
+      })
+      .then(data => {
+        sendResponse({ success: true, data: data });
+      })
+      .catch(error => {
+        sendResponse({ success: false, error: error.message });
+      });
+    return true; // Keep channel open for async response
+  }
+
+  if (request.action === "checkServerVersion") {
+    const backendUrl = request.backendUrl || "http://localhost:5000";
+
+    fetch(`${backendUrl}/info`)
+      .then(response => {
+        if (!response.ok) throw new Error(`Server error: ${response.status}`);
+        return response.json();
+      })
+      .then(data => {
+        sendResponse({ success: true, data: data });
+      })
+      .catch(error => {
+        sendResponse({ success: false, error: error.message });
+      });
+    return true; // Keep channel open for async response
+  }
 });
 
 console.log("Noticing Game: Background script cargado");

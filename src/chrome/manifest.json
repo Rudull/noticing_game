@@ -1,10 +1,19 @@
 {
   "manifest_version": 3,
   "name": "Noticing Game",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Enhance language learning by detecting frequent words in YouTube subtitles, enabling interactive vocabulary practice.",
-  "permissions": ["activeTab", "storage", "tabs"],
-  "host_permissions": ["*://*.youtube.com/*", "https://www.googleapis.com/*"],
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "*://*.youtube.com/*",
+    "https://www.googleapis.com/*",
+    "http://localhost:*/",
+    "http://127.0.0.1:*/"
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -15,7 +24,9 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*.youtube.com/watch?*"],
+      "matches": [
+        "*://*.youtube.com/watch?*"
+      ],
       "js": [
         "content-bridge.js",
         "utils/text-processing.js",
@@ -35,14 +46,22 @@
         "ui-manager.js",
         "content.js"
       ],
-      "css": ["floating-panel.css"],
+      "css": [
+        "floating-panel.css"
+      ],
       "run_at": "document_end"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["word-list.json", "content-bridge.js", "icons/*"],
-      "matches": ["*://*.youtube.com/*"]
+      "resources": [
+        "word-list.json",
+        "content-bridge.js",
+        "icons/*"
+      ],
+      "matches": [
+        "*://*.youtube.com/*"
+      ]
     }
   ],
   "background": {

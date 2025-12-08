@@ -301,14 +301,21 @@ window.UIManager = (function () {
             );
           } else {
             // Mostrar mensaje claro y visible
-            status.textContent = `Error: No subtitles found!`;
+            const errorMessage = result.error || "No subtitles found!";
+            status.textContent = `Error: ${errorMessage}`;
             status.style.color = "red";
             status.style.fontWeight = "bold";
 
-            // Mostrar alerta para que el usuario sepa qué hacer
-            alert(
-              "This video doesn't have subtitles. Please choose a video with subtitles (either auto-generated or manual) to use Noticing Game.",
-            );
+            // Mostrar alerta con el error específico para depuración
+            // Solo mostrar el mensaje de "No subtitles" si realmente es ese el error
+            if (errorMessage.includes("No subtitles") || errorMessage.includes("Could not obtain")) {
+              alert(
+                "This video doesn't have subtitles. Please choose a video with subtitles (either auto-generated or manual) to use Noticing Game.",
+              );
+            } else {
+              // Mostrar el error real para ayudar a depurar
+              alert(`Error analyzing video: ${errorMessage}`);
+            }
 
             // Restaurar estilo después de un tiempo
             setTimeout(() => {
@@ -388,20 +395,20 @@ window.UIManager = (function () {
                       <label for="grid-columns">Columns (width):</label>
                       <select id="grid-columns">
                           ${Array.from({ length: 20 }, (_, i) => {
-                            const value = i + 1;
-                            const selected = value === 5 ? "selected" : "";
-                            return `<option value="${value}" ${selected}>${value}</option>`;
-                          }).join("")}
+            const value = i + 1;
+            const selected = value === 5 ? "selected" : "";
+            return `<option value="${value}" ${selected}>${value}</option>`;
+          }).join("")}
                       </select>
                   </div>
                   <div class="grid-config-row">
                       <label for="grid-rows">Rows (height):</label>
                       <select id="grid-rows">
                           ${Array.from({ length: 20 }, (_, i) => {
-                            const value = i + 1;
-                            const selected = value === 5 ? "selected" : "";
-                            return `<option value="${value}" ${selected}>${value}</option>`;
-                          }).join("")}
+            const value = i + 1;
+            const selected = value === 5 ? "selected" : "";
+            return `<option value="${value}" ${selected}>${value}</option>`;
+          }).join("")}
                       </select>
                   </div>
                   <div class="grid-preview">
@@ -415,20 +422,20 @@ window.UIManager = (function () {
                   <label for="word-font-size-select" style="font-weight: bold; color: var(--text-color);" title="Change the font size of the word buttons in the game grid.">Word button font size:</label>
                   <select id="word-font-size-select" class="noticing-game-other-select" title="Change the font size of the word buttons in the game grid." style="margin-left: 10px;">
                     ${Array.from({ length: 25 }, (_, i) => {
-                      const value = i + 8;
-                      const selected = value === 13 ? "selected" : "";
-                      return `<option value="${value}" ${selected}>${value}</option>`;
-                    }).join("")}
+            const value = i + 8;
+            const selected = value === 13 ? "selected" : "";
+            return `<option value="${value}" ${selected}>${value}</option>`;
+          }).join("")}
                   </select>
                 </div>
                 <div class="grid-config-row" style="margin-bottom: 10px;">
                   <label for="word-clicks-to-overcome-select" style="font-weight: bold; color: var(--text-color);" title="How many times you must notice a word before it is considered 'overcome' and replaced by a new one.">Times to overcome a word:</label>
                   <select id="word-clicks-to-overcome-select" class="noticing-game-other-select" title="How many times you must notice a word before it is considered 'overcome' and replaced by a new one." style="margin-left: 10px;">
                     ${Array.from({ length: 6 }, (_, i) => {
-                      const value = i + 1;
-                      const selected = value === 3 ? "selected" : "";
-                      return `<option value="${value}" ${selected}>${value}</option>`;
-                    }).join("")}
+            const value = i + 1;
+            const selected = value === 3 ? "selected" : "";
+            return `<option value="${value}" ${selected}>${value}</option>`;
+          }).join("")}
                   </select>
                 </div>
                 <div class="grid-config-row" style="margin-bottom: 10px;">
@@ -486,10 +493,10 @@ window.UIManager = (function () {
                   if (
                     window.WordDifficultyTracker &&
                     typeof window.WordDifficultyTracker.getLearnedWords ===
-                      "function" &&
+                    "function" &&
                     window.UIComponents &&
                     typeof window.UIComponents.createLearnedWordsModal ===
-                      "function"
+                    "function"
                   ) {
                     const learnedWords =
                       window.WordDifficultyTracker.getLearnedWords();
@@ -858,7 +865,7 @@ window.UIManager = (function () {
               if (
                 window.WordDetection &&
                 typeof window.WordDetection.setPauseTimeWhenVideoStops ===
-                  "function"
+                "function"
               ) {
                 window.WordDetection.setPauseTimeWhenVideoStops(newState);
               }
@@ -1037,7 +1044,7 @@ window.UIManager = (function () {
             if (
               window.WordDifficultyTracker &&
               typeof window.WordDifficultyTracker.getLearnedWords ===
-                "function" &&
+              "function" &&
               window.UIComponents &&
               typeof window.UIComponents.createLearnedWordsModal === "function"
             ) {

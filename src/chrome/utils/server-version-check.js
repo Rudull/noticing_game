@@ -10,7 +10,7 @@
 
 const ServerVersionCheck = (function () {
     // Cambia esto si la versión mínima cambia en el futuro
-    const MIN_SERVER_VERSION = "0.1.1";
+    const MIN_SERVER_VERSION = "0.1.2";
 
     // Compara dos versiones semánticas (ej: "0.1.1" vs "0.1.0")
     function compareVersions(v1, v2) {
@@ -84,65 +84,78 @@ const ServerVersionCheck = (function () {
                 console.log(
                     `ServerVersionCheck: Checking version at ${backendUrl}/info`,
                 );
-                fetch(`${backendUrl}/info`)
-                    .then((response) => {
-                        console.log(
-                            `ServerVersionCheck: Received response with status: ${response.status}`,
-                        );
-                        if (!response.ok)
-                            throw new Error(
-                                `Server responded with status ${response.status}`,
-                            );
-                        return response.json();
-                    })
-                    .then((data) => {
-                        console.log(
-                            "ServerVersionCheck: Server info data:",
-                            data,
-                        );
-                        const serverVersion = data.version || "0.0.0";
-                        console.log(
-                            `ServerVersionCheck: Server version: ${serverVersion}, Required: ${MIN_SERVER_VERSION}`,
-                        );
-                        const cmp = compareVersions(
-                            serverVersion,
-                            MIN_SERVER_VERSION,
-                        );
-                        const outdated = cmp < 0;
-                        console.log(
-                            `ServerVersionCheck: Version comparison result: ${cmp}, Outdated: ${outdated}`,
-                        );
 
-                        const result = {
-                            ok: true,
-                            serverVersion,
-                            minVersion: MIN_SERVER_VERSION,
-                            outdated,
-                        };
-                        console.log(
-                            "ServerVersionCheck: Final result:",
-                            result,
-                        );
-                        resolve(result);
-                    })
-                    .catch((err) => {
-                        console.error(
-                            "ServerVersionCheck: Error checking server version:",
-                            err,
-                        );
-                        const result = {
-                            ok: false,
-                            serverVersion: null,
-                            minVersion: MIN_SERVER_VERSION,
-                            outdated: true,
-                            error: err.message || "Could not connect to server",
-                        };
-                        console.log(
-                            "ServerVersionCheck: Error result:",
-                            result,
-                        );
-                        resolve(result);
-                    });
+                chrome.runtime.sendMessage(
+                    {
+                        action: "checkServerVersion",
+                        backendUrl: backendUrl
+                    },
+                    (response) => {
+                        if (chrome.runtime.lastError) {
+                            console.error(
+                                "ServerVersionCheck: Runtime error:",
+                                chrome.runtime.lastError.message,
+                            );
+                            resolve({
+                                ok: false,
+                                serverVersion: null,
+                                minVersion: MIN_SERVER_VERSION,
+                                outdated: true,
+                                error: chrome.runtime.lastError.message
+                            });
+                            return;
+                        }
+
+                        if (response && response.success) {
+                            const data = response.data;
+                            console.log(
+                                "ServerVersionCheck: Server info data:",
+                                data,
+                            );
+                            const serverVersion = data.version || "0.0.0";
+                            console.log(
+                                `ServerVersionCheck: Server version: ${serverVersion}, Required: ${MIN_SERVER_VERSION}`,
+                            );
+                            const cmp = compareVersions(
+                                serverVersion,
+                                MIN_SERVER_VERSION,
+                            );
+                            const outdated = cmp < 0;
+                            console.log(
+                                `ServerVersionCheck: Version comparison result: ${cmp}, Outdated: ${outdated}`,
+                            );
+
+                            const result = {
+                                ok: true,
+                                serverVersion,
+                                minVersion: MIN_SERVER_VERSION,
+                                outdated,
+                            };
+                            console.log(
+                                "ServerVersionCheck: Final result:",
+                                result,
+                            );
+                            resolve(result);
+                        } else {
+                            console.error(
+                                "ServerVersionCheck: Error checking server version:",
+                                response ? response.error : "Unknown error",
+                            );
+                            const result = {
+                                ok: false,
+                                serverVersion: null,
+                                minVersion: MIN_SERVER_VERSION,
+                                outdated: true,
+                                error: response ? response.error : "Could not connect to server",
+                            };
+                            console.log(
+                                "ServerVersionCheck: Error result:",
+                                result,
+                            );
+                            resolve(result);
+                        }
+                    }
+                );
             });
         });
     }

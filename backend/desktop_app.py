@@ -40,6 +40,12 @@ from pathlib import Path
 import logging
 from datetime import datetime
 import tempfile
+import requests
+import re
+
+VERSION = "0.1.2"
+GITHUB_REPO = "Rudull/noticing_game"
+GITHUB_RAW_URL = f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/backend/desktop_app.py"
 
 # Optional system tray support
 try:
@@ -61,6 +67,8 @@ class NoticingGameServerManager:
         self.auto_check_enabled = True
         self.tray_icon = None
         self.is_frozen = getattr(sys, 'frozen', False)
+        self.latest_version = None
+        self.download_url = None
 
         # UI Colors matching the extension
         self.primary_color = "#6544e9"
@@ -101,6 +109,12 @@ class NoticingGameServerManager:
 
         # Setup auto-startup if enabled
         self.setup_auto_startup()
+
+        # Cleanup old update files
+        self.cleanup_old_updates()
+
+        # Check for updates
+        threading.Thread(target=self.check_updates, daemon=True).start()
 
     def load_config(self):
         """Load configuration from file"""
@@ -216,6 +230,10 @@ class NoticingGameServerManager:
                                          command=self.show_settings)
         self.settings_button.pack(side=tk.LEFT, padx=(0, 10))
 
+        self.update_button = ttk.Button(button_frame, text="Update Available!",
+                                       command=self.perform_update, style="success.TButton")
+        # Don't pack it yet, only when update is available
+
         # Create circular About button with info icon
         self.about_button = ttk.Button(button_frame, text="ℹ",
                                       command=self.show_about, width=5)
@@ -271,6 +289,7 @@ class NoticingGameServerManager:
                 ("Stop", self.stop_button),
                 ("Restart", self.restart_button),
                 ("Settings", self.settings_button),
+                ("Update", self.update_button),
                 ("About", self.about_button)
             ]
 
@@ -279,7 +298,7 @@ class NoticingGameServerManager:
                 if button:
                     button.update_idletasks()
                     # Ensure button is properly packed and visible
-                    if not button.winfo_viewable():
+                    if not button.winfo_viewable() and name != "Update":
                         button.pack_configure()
                         # Additional force for PyInstaller
                         if self.is_frozen:
@@ -298,7 +317,8 @@ class NoticingGameServerManager:
                     if button and hasattr(button, 'pack'):
                         try:
                             button.pack_forget()
-                            button.pack(side=tk.LEFT, padx=(0, 10))
+                            if name != "Update" or self.latest_version:
+                                button.pack(side=tk.LEFT, padx=(0, 10))
                         except Exception as pack_error:
                             self.logger.warning(f"Failed to re-pack {name} button: {pack_error}")
 
@@ -719,7 +739,25 @@ X-GNOME-Autostart-enabled=true
                 return {
                     'status': 'running',
                     'service': 'Noticing Game Subtitle Server',
-                    'version': '0.1.1',
+                    'version': VERSION,
+                    'timestamp': datetime.now().isoformat()
+                }
+
+            @self.flask_app.route('/info', methods=['GET'])
+            def info():
+                from datetime import datetime
+                return {
+                    'name': 'Noticing Game - Subtitle Extraction Server',
+                    'version': VERSION,
+                    'description': 'Backend server using yt-dlp to extract YouTube subtitles for the Noticing Game extension',
+                    'author': 'Rafael Hernandez Bustamante',
+                    'license': 'GNU General Public License v3.0 (GPL-3.0)',
+                    'repository': 'https://github.com/Rudull/noticing-game',
+                    'endpoints': {
+                        '/': 'Health check',
+                        '/info': 'Server information',
+                        '/extract-subtitles': 'Extract subtitles from YouTube video (POST/GET)'
+                    },
                     'timestamp': datetime.now().isoformat()
                 }
 
@@ -781,51 +819,235 @@ X-GNOME-Autostart-enabled=true
                             self.rfile = self.connection.makefile('rb', self.rbufsize)
                             self.wfile = self.connection.makefile('wb', self.wbufsize)
 
-                    # Create server with socket reuse
-                    self.werkzeug_server = werkzeug.serving.make_server(
-                        host, port, self.flask_app,
-                        request_handler=ReuseWSGIRequestHandler,
-                        threaded=True
-                    )
-
-                    # Enable socket reuse options
-                    self.werkzeug_server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                    if hasattr(socket, 'SO_REUSEPORT'):
-                        try:
-                            self.werkzeug_server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-                        except:
-                            pass  # SO_REUSEPORT not available on all systems
-
-                    self.server_socket = self.werkzeug_server.socket
-
-                    self.log_message(f"[SERVER] Starting on {host}:{port}")
+                    # Use the custom request handler
+                    from werkzeug.serving import make_server
+                    self.werkzeug_server = make_server(host, port, self.flask_app, request_handler=ReuseWSGIRequestHandler)
                     self.werkzeug_server.serve_forever()
 
                 except Exception as e:
-                    if not self.flask_shutdown:
-                        self.log_message(f"[SERVER] Error: {e}")
-                finally:
-                    # Clean shutdown
-                    if hasattr(self, 'werkzeug_server') and self.werkzeug_server:
-                        try:
-                            self.werkzeug_server.server_close()
-                        except:
-                            pass
-                    self.log_message("[SERVER] Flask thread ended")
+                    self.logger.error(f"Error in embedded server: {e}")
 
+            # Start Flask in a separate thread
             self.server_thread = threading.Thread(target=run_flask, daemon=True)
             self.server_thread.start()
+            
+            self.is_server_running = True
+            self.update_status(True, "Running")
+            self.log_message(f"Server started on http://{self.config.get('server_host', '127.0.0.1')}:{self.config.get('server_port', 5000)}")
 
-            # Give server a moment to start
-            time.sleep(1)
-            self.log_message("Embedded server started")
-
-        except ImportError as e:
-            self.log_message(f"Error importing server components: {e}")
-            raise
         except Exception as e:
+            self.logger.error(f"Error starting embedded server: {e}")
             self.log_message(f"Error starting embedded server: {e}")
-            raise
+            self.cleanup_server_resources()
+
+    def cleanup_old_updates(self):
+        """Remove old executable files after update"""
+        if not self.is_frozen:
+            return
+            
+        try:
+            # Check for .old files from previous updates
+            current_exe = Path(sys.executable)
+            old_exe = current_exe.with_name(current_exe.name + ".old")
+            
+            if old_exe.exists():
+                try:
+                    # Try to delete it (might fail if still locked, though unlikely on startup)
+                    old_exe.unlink()
+                    self.logger.info(f"Removed old version: {old_exe}")
+                except Exception as e:
+                    self.logger.warning(f"Could not remove old version: {e}")
+        except Exception as e:
+            self.logger.error(f"Error in cleanup: {e}")
+
+    def check_updates(self):
+        """Check for updates on GitHub Releases"""
+        try:
+            self.logger.info("Checking for updates...")
+            # Use GitHub API to get the latest release
+            api_url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
+            response = requests.get(api_url, timeout=5)
+            
+            if response.status_code == 200:
+                data = response.json()
+                tag_name = data.get('tag_name', '')
+                remote_version = tag_name.lstrip('v')
+                
+                if remote_version:
+                    self.logger.info(f"Local version: {VERSION}, Remote version: {remote_version}")
+                    if self.is_newer_version(VERSION, remote_version):
+                        self.latest_version = remote_version
+                        
+                        # Find the correct asset for this platform
+                        asset_url = None
+                        system = platform.system()
+                        
+                        for asset in data.get('assets', []):
+                            name = asset['name'].lower()
+                            url = asset['browser_download_url']
+                            
+                            if system == "Windows" and name.endswith('.exe'):
+                                asset_url = url
+                                break
+                            elif system == "Linux" and not name.endswith('.exe') and '.' not in name:
+                                # Assumption: Linux binary has no extension or specific name
+                                # You might need to adjust this logic based on your actual release naming
+                                asset_url = url
+                                break
+                            elif system == "Darwin" and (name.endswith('.dmg') or name.endswith('.app')):
+                                asset_url = url
+                                break
+                        
+                        # Fallback: if only one asset and it looks binary-ish, take it
+                        if not asset_url and len(data.get('assets', [])) == 1:
+                             asset_url = data['assets'][0]['browser_download_url']
+
+                        if asset_url:
+                            self.download_url = asset_url
+                            self.root.after(0, self.show_update_available)
+                        else:
+                            # Fallback to release page if no suitable asset found
+                            self.download_url = data.get('html_url', f"https://github.com/{GITHUB_REPO}/releases/latest")
+                            self.logger.warning("No suitable asset found for auto-update, falling back to release page")
+                            self.root.after(0, self.show_update_available)
+
+            else:
+                self.logger.warning(f"Failed to check updates: {response.status_code}")
+        except Exception as e:
+            self.logger.error(f"Error checking for updates: {e}")
+
+    def is_newer_version(self, current, remote):
+        """Compare two version strings"""
+        try:
+            c_parts = [int(x) for x in current.split('.')]
+            r_parts = [int(x) for x in remote.split('.')]
+            return r_parts > c_parts
+        except:
+            return False
+
+    def show_update_available(self):
+        """Show update button in UI"""
+        self.update_button.pack(side=tk.LEFT, padx=(0, 10))
+        self.log_message(f"Update available: {self.latest_version}")
+        # Flash the button or something?
+        
+    def perform_update(self):
+        """Handle update action - Download and Install"""
+        if not self.latest_version or not self.download_url:
+            return
+
+        # If not frozen (dev mode) or URL is a webpage, just open browser
+        if not self.is_frozen or "github.com" in self.download_url and "/releases/tag/" in self.download_url:
+            msg = f"A new version ({self.latest_version}) is available.\n\nClick OK to open the download page."
+            if messagebox.askokcancel("Update Available", msg):
+                webbrowser.open(self.download_url)
+            return
+
+        # Confirm update
+        msg = f"A new version ({self.latest_version}) is available.\n\nDo you want to download and install it now?\nThe application will restart automatically."
+        if not messagebox.askyesno("Update Available", msg):
+            return
+
+        # Create progress dialog
+        self.update_window = tk.Toplevel(self.root)
+        self.update_window.title("Updating...")
+        self.update_window.geometry("300x150")
+        self.update_window.resizable(False, False)
+        self.update_window.transient(self.root)
+        self.update_window.grab_set()
+        
+        # Center
+        self.update_window.geometry("+%d+%d" % (self.root.winfo_rootx() + 50, self.root.winfo_rooty() + 50))
+
+        ttk.Label(self.update_window, text="Downloading update...", font=('Arial', 10)).pack(pady=20)
+        
+        self.progress_var = tk.DoubleVar()
+        self.progress_bar = ttk.Progressbar(self.update_window, variable=self.progress_var, maximum=100)
+        self.progress_bar.pack(fill=tk.X, padx=20, pady=10)
+        
+        self.status_label = ttk.Label(self.update_window, text="Starting download...")
+        self.status_label.pack(pady=5)
+
+        # Start download in thread
+        threading.Thread(target=self.download_and_install, daemon=True).start()
+
+    def download_and_install(self):
+        """Download and install the update in a background thread"""
+        try:
+            import shutil
+            
+            # Determine destination
+            current_exe = Path(sys.executable)
+            download_dest = current_exe.with_name("update_temp")
+            
+            self.root.after(0, lambda: self.status_label.config(text="Downloading..."))
+            
+            # Download with progress
+            response = requests.get(self.download_url, stream=True, timeout=60)
+            total_size = int(response.headers.get('content-length', 0))
+            
+            if response.status_code != 200:
+                raise Exception(f"Download failed: {response.status_code}")
+                
+            block_size = 1024 * 8
+            wrote = 0
+            
+            with open(download_dest, 'wb') as f:
+                for data in response.iter_content(block_size):
+                    wrote += len(data)
+                    f.write(data)
+                    if total_size:
+                        progress = (wrote / total_size) * 100
+                        self.root.after(0, lambda p=progress: self.progress_var.set(p))
+                        
+            self.root.after(0, lambda: self.status_label.config(text="Installing..."))
+            
+            # Prepare for swap
+            old_exe = current_exe.with_name(current_exe.name + ".old")
+            
+            # Rename current to old
+            if old_exe.exists():
+                old_exe.unlink()
+            
+            current_exe.rename(old_exe)
+            
+            # Move new to current
+            download_dest.rename(current_exe)
+            
+            # Make executable (Linux/Mac)
+            if platform.system() != "Windows":
+                try:
+                    current_exe.chmod(current_exe.stat().st_mode | 0o111)
+                except:
+                    pass
+            
+            self.root.after(0, lambda: self.status_label.config(text="Restarting..."))
+            time.sleep(1)
+            
+            # Restart
+            self.root.after(0, self.restart_application)
+            
+        except Exception as e:
+            self.logger.error(f"Update failed: {e}")
+            self.root.after(0, lambda: messagebox.showerror("Update Failed", f"Failed to update: {e}"))
+            self.root.after(0, lambda: self.update_window.destroy() if hasattr(self, 'update_window') else None)
+
+    def restart_application(self):
+        """Restart the application"""
+        try:
+            # Stop server first
+            self.stop_server()
+            
+            # Re-launch
+            if platform.system() == "Windows":
+                subprocess.Popen([sys.executable] + sys.argv[1:])
+            else:
+                subprocess.Popen([sys.executable] + sys.argv[1:])
+                
+            self.quit_application()
+        except Exception as e:
+            self.logger.error(f"Restart failed: {e}")
+
 
     def start_subprocess_server(self):
         """Start the server as a subprocess (for development)"""
@@ -1254,7 +1476,7 @@ X-GNOME-Autostart-enabled=true
         version_frame.pack(fill=tk.X, pady=(0, 10))
 
         version_info = [
-            ("Version:", "0.1.1"),
+            ("Version:", "0.1.2"),
             ("Author:", "Rafael Hernandez Bustamante"),
             ("License:", "GNU General Public License v3.0 (GPL-3.0)")
         ]
