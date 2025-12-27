@@ -18,6 +18,8 @@ This backend server solves the problem of YouTube's restrictions on direct subti
 - Desktop GUI application with system tray integration
 - Auto-startup configuration
 - Server information endpoint
+- Automated yt-dlp maintenance system with safe updates and rollback
+
 
 ## Requirements
 
@@ -54,28 +56,55 @@ http://localhost:5000/extract-subtitles?url=https://www.youtube.com/watch?v=VIDE
 
 ## Installation
 
-### Option 1: Using pip (Recommended)
+### Option 1: Development Mode (Recommended for Contributors)
+
+This method uses `setup.py` to install the project in "editable" mode. This means any changes you make to the source code will be reflected immediately without reinstalling.
 
 ```bash
-# Install directly from requirements
-pip install -r requirements.txt
+# Navigate to the backend directory
+cd backend
 
-# Or install with development dependencies
-pip install -r requirements.txt
-pip install pytest pytest-flask black flake8
-```
-
-### Option 2: Using setup.py
-
-```bash
-# Install the package
-pip install -e .
-
-# With development dependencies
+# Install in editable mode with development dependencies
 pip install -e ".[dev]"
 ```
 
-### Option 3: Virtual Environment (Recommended for development)
+### Option 2: Anaconda / Conda (Recommended for automatic environment management)
+
+If you use Anaconda, the `environment.yml` file provides **automatic environment setup and normalization**:
+
+#### First-time setup:
+```bash
+# Create the environment from the yml file
+conda env create -f environment.yml
+
+# Activate it
+conda activate noticing
+```
+
+#### Updating/Normalizing an existing environment:
+If you've been developing and installed extra packages, use `--prune` to **remove packages not listed** in `environment.yml`:
+
+```bash
+# Activate the environment first
+conda activate noticing
+
+# Update and clean (removes unused packages automatically)
+conda env update -f environment.yml --prune
+```
+
+The `--prune` flag will:
+- ✅ Install any missing packages from `environment.yml`
+- ✅ Update packages to match specified versions
+- ❌ **Remove** packages that aren't in the specification
+
+#### Alternative: Manual setup with pip
+```bash
+conda create -n noticing python=3.11
+conda activate noticing
+pip install -e .
+```
+
+### Option 3: Standard Virtual Environment (venv)
 
 ```bash
 # Create virtual environment
@@ -87,7 +116,15 @@ venv\Scripts\activate
 # On macOS/Linux:
 source venv/bin/activate
 
-# Install dependencies
+# Install the project
+pip install -e .
+```
+
+### Option 4: Simple Pip Installation (Production/User)
+
+If you just want to install the dependencies and run the server:
+
+```bash
 pip install -r requirements.txt
 ```
 
@@ -102,7 +139,7 @@ Health check endpoint.
 {
   "status": "running",
   "service": "Noticing Game Subtitle Server",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "timestamp": "2023-12-01T10:30:00"
 }
 ```
@@ -115,7 +152,7 @@ Server information endpoint with version, author, and license details.
 ```json
 {
   "name": "Noticing Game - Subtitle Extraction Server",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "description": "Backend server using yt-dlp to extract YouTube subtitles for the Noticing Game extension",
   "author": "Rafael Hernandez Bustamante",
   "license": "GNU General Public License v3.0 (GPL-3.0)",
@@ -254,6 +291,29 @@ ydl_opts = {
 }
 ```
 
+## yt-dlp Maintenance
+
+To ensure the backend remains functional despite frequent YouTube platform changes, a maintenance script is included to manage `yt-dlp` updates safely.
+
+### Features
+- **Environment Guard**: Ensures script runs in the correct `noticing` Conda environment.
+- **Fast Checks**: Queries PyPI directly (<1s) for the latest versions.
+- **Smart Verification**: Validates updates against English Manual and ASR subtitle extraction test cases.
+- **Auto-Rollback**: Automatically reverts to the previous version if an update fails verification.
+
+### Usage
+```bash
+# Activate environment
+conda activate noticing
+
+# Run maintenance (check for updates, update and verify)
+python maintain_yt_dlp.py
+
+# Run verification only
+python maintain_yt_dlp.py --verify-only
+```
+
+
 ## Troubleshooting
 
 ### Common Issues
@@ -366,45 +426,18 @@ flake8 subtitle_server.py
 backend/
 ├── desktop_app.py           # Desktop GUI application
 ├── subtitle_server.py       # Main server application
-├── show_config.py           # Configuration display utility
 ├── start_server.py          # Cross-platform server startup script
 ├── start_server.bat         # Windows server startup script
 ├── start_server.sh          # Linux/macOS server startup script
+├── maintain_yt_dlp.py       # Automated yt-dlp maintenance script
 ├── requirements.txt         # Python dependencies
+├── environment.yml          # Conda environment specification (with --prune support)
 ├── setup.py                # Package setup
 ├── README.md               # This file
 ├── build_executable_*.py   # Build scripts for different platforms
 ├── auto_startup/           # Auto-startup service scripts
 └── tests/                  # Test files (if any)
 ```
-
-## Configuration Management
-
-### View Current Configuration
-
-To see your current configuration settings:
-
-```bash
-python show_config.py
-```
-
-This displays:
-- Configuration file location and status
-- Current server host and port settings
-- Application preferences
-- Desktop app settings
-- Configuration tips and guidance
-
-### Configuration File Location
-
-- **Windows:** `%USERPROFILE%\.noticing_game_config.json`
-- **Linux/macOS:** `~/.noticing_game_config.json`
-
-### Configuration Priority
-
-1. Command line arguments (highest priority)
-2. Configuration file settings
-3. Default values (lowest priority)
 
 ## Security Considerations
 
@@ -496,7 +529,9 @@ The application uses icons from the `../assets/` directory:
 
 ## Changelog
 
-### Version 0.1.1
+### Version 0.1.3
+- **Automated yt-dlp Maintenance:** New script for safe updates, verification (Manual/ASR), and automatic rollback.
+- **Automatic Updates:** Desktop app can now self-update from GitHub Releases.
 - Initial release
 - Basic subtitle extraction with yt-dlp
 - Flask REST API with `/info` endpoint

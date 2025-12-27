@@ -319,7 +319,8 @@ a = Analysis(
     datas=[
         ('subtitle_server.py', '.'),
         ('requirements.txt', '.'),
-        ('README.md', '.')
+        ('README.md', '.'),
+        ('../assets/icono.ico', '.')
     ],
     hiddenimports=[
         'flask',

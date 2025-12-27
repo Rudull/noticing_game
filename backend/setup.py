@@ -6,6 +6,7 @@ Subtitle extraction server using yt-dlp for the Noticing Game Chrome extension.
 
 from setuptools import setup, find_packages
 import os
+from version import __version__
 
 # Read the README file for long description
 def read_readme():
@@ -35,7 +36,7 @@ def read_requirements():
 
 setup(
     name="noticing-game-backend",
-    version="0.1.1",
+    version=__version__,
     author="Rafael Hernandez Bustamante",
     author_email="laboratorio.rudull@gmail.com",  # Update with actual email
     description="Backend server for Noticing Game Chrome extension - YouTube subtitle extraction",

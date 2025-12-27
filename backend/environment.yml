@@ -1,0 +1,47 @@
+# NOTICING GAME - Anaconda Environment
+#
+# Usage:
+#   Create:   conda env create --file environment.yml
+#   Update:   conda env update --file environment.yml --prune
+#   Activate: conda activate noticing
+#
+# This file manages dependencies for both the Backend Server and the Desktop App.
+# Environment markers are used to handle cross-platform dependencies automatically.
+
+name: noticing
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  # Python version
+  - python=3.11
+  
+  # Core dependencies (installed via pip for exact version control)
+  - pip
+  
+  # Optional: Install some packages via conda for better compatibility
+  # These are common dependencies that conda handles well
+  - requests>=2.31.0
+  
+  # All other dependencies via pip (from requirements.txt)
+  - pip:
+      # --- Core Runtime (Subtitle Server) ---
+      - Flask>=2.3.0,<3.0.0
+      - Flask-CORS>=4.0.0,<5.0.0
+      - yt-dlp>=2025.12.8
+      
+      # --- Desktop Application (GUI & tray) ---
+      - urllib3>=1.26.16,<3.0.0
+      - pystray>=0.19.5
+      - Pillow>=10.4.0
+      - pywin32; sys_platform == 'win32'  # Required for Windows system integrations
+      
+      # --- Development and Testing ---
+      - pytest>=7.4.0
+      - pytest-flask>=1.2.0
+      - pytest-cov>=4.1.0
+      
+      # --- Build and Style ---
+      - pyinstaller>=6.0.0
+      - black>=23.0.0
+      - flake8>=6.0.0

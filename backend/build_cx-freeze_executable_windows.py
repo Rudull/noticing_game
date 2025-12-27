@@ -23,6 +23,7 @@ import sys
 import os
 import argparse
 import subprocess
+from version import __version__
 import shutil
 import tempfile
 from pathlib import Path
@@ -351,7 +352,7 @@ executable = Executable(
 # Main setup configuration
 setup(
     name="Noticing Game Server",
-    version="0.1.0",
+    version=__version__,
     author="Rafael Hernandez Bustamante",
     description="Backend server for Noticing Game Chrome extension - YouTube subtitle extraction",
     long_description="Desktop application to manage the Noticing Game subtitle extraction server with GUI interface and system tray integration.",

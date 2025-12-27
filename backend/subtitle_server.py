@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Noticing Game - Subtitle Extraction Server
-Backend server using yt-dlp to extract YouTube subtitles for the Noticing Game extension.
+Backend server for subtitle extraction on YouTube, Netflix, and Disney+. Compatible with Chromium-based browsers.
 """
 
 import json
@@ -17,6 +17,7 @@ import tempfile
 import os
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from version import __version__
 
 # Configure logging
 logging.basicConfig(
@@ -70,6 +71,8 @@ class SubtitleExtractor:
             'subtitlesformat': 'ttml',
             'skip_download': True,
             'extract_flat': False,
+            # Try to use browser cookies to avoid 429 errors and access age-restricted content
+            'cookiesfrombrowser': ('chrome',), 
         }
 
     def extract_video_id(self, url):
@@ -159,6 +162,78 @@ class SubtitleExtractor:
             logger.warning(f"Could not parse time: {time_str}")
             return 0.0
 
+    def parse_vtt_subtitles(self, vtt_content):
+        """Parse WebVTT subtitle content"""
+        try:
+            subtitles = []
+            
+            # Simple VTT parser
+            lines = vtt_content.splitlines()
+            buffer = {
+                'start': None,
+                'end': None,
+                'text': []
+            }
+            
+            # Regex for VTT timestamp: 00:00:00.000 or 00:00.000
+            time_pattern = r'((?:\d{2}:)?\d{2}:\d{2}\.\d{3})\s+-->\s+((?:\d{2}:)?\d{2}:\d{2}\.\d{3})'
+            
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    # End of block, save if we have data
+                    if buffer['start'] is not None and buffer['text']:
+                        subtitles.append({
+                            'text': ' '.join(buffer['text']).strip(),
+                            'start': buffer['start'],
+                            'end': buffer['end'],
+                            'duration': buffer['end'] - buffer['start']
+                        })
+                        buffer = {'start': None, 'end': None, 'text': []}
+                    continue
+                
+                if 'WEBVTT' in line or 'X-TIMESTAMP' in line or line.startswith('NOTE'):
+                    continue
+                
+                # Check for timestamp line
+                time_match = re.search(time_pattern, line)
+                if time_match:
+                    # If we had a previous buffer that wasn't saved (e.g. no empty line), save it now
+                    if buffer['start'] is not None and buffer['text']:
+                        subtitles.append({
+                            'text': ' '.join(buffer['text']).strip(),
+                            'start': buffer['start'],
+                            'end': buffer['end'],
+                            'duration': buffer['end'] - buffer['start']
+                        })
+                        buffer = {'start': None, 'end': None, 'text': []}
+                    
+                    buffer['start'] = self.time_to_seconds(time_match.group(1))
+                    buffer['end'] = self.time_to_seconds(time_match.group(2))
+                    continue
+                
+                # If we have a start time, this must be text
+                if buffer['start'] is not None:
+                    # Remove VTT tags like <c.color> or <b>
+                    clean_line = re.sub(r'<[^>]+>', '', line)
+                    if clean_line:
+                        buffer['text'].append(clean_line)
+            
+            # Check for last buffer
+            if buffer['start'] is not None and buffer['text']:
+                subtitles.append({
+                    'text': ' '.join(buffer['text']).strip(),
+                    'start': buffer['start'],
+                    'end': buffer['end'],
+                    'duration': buffer['end'] - buffer['start']
+                })
+                
+            return subtitles
+            
+        except Exception as e:
+            logger.error(f"Error parsing VTT: {e}")
+            return []
+
     def get_subtitles(self, video_url):
         """Extract subtitles from YouTube video"""
         video_id = self.extract_video_id(video_url)
@@ -170,81 +245,170 @@ class SubtitleExtractor:
         with tempfile.TemporaryDirectory() as temp_dir:
             try:
                 # Configure yt-dlp with temporary directory
+                # Configure yt-dlp with temporary directory
                 ydl_opts = self.ydl_opts.copy()
                 ydl_opts['outtmpl'] = os.path.join(temp_dir, '%(id)s.%(ext)s')
 
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    # Extract video info
-                    info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+                info = None
+                try:
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        # Extract video info
+                        info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+                except yt_dlp.utils.DownloadError as e:
+                    # Check for cookie-related errors and retry without cookies
+                    err_msg = str(e).lower()
+                    if ("cookies" in err_msg or "could not copy" in err_msg) and 'cookiesfrombrowser' in ydl_opts:
+                        logger.warning(f"Cookie access issue detected: {e}. Retrying without browser cookies...")
+                        ydl_opts.pop('cookiesfrombrowser', None)
+                        
+                        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                            info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+                    else:
+                        raise e
 
-                    # Check if subtitles are available
-                    subtitles_info = info.get('subtitles', {})
-                    auto_subtitles_info = info.get('automatic_captions', {})
+                # Check if subtitles are available (must have 'info' by now)
+                subtitles_info = info.get('subtitles', {})
+                auto_subtitles_info = info.get('automatic_captions', {})
 
-                    if not subtitles_info and not auto_subtitles_info:
-                        raise ValueError("No subtitles available for this video")
+                if not subtitles_info and not auto_subtitles_info:
+                    raise ValueError("No subtitles available for this video")
 
-                    # Prefer manual subtitles over automatic ones
-                    available_langs = []
-                    subtitle_source = "manual"
-
-                    if subtitles_info:
-                        available_langs = list(subtitles_info.keys())
-                    elif auto_subtitles_info:
-                        available_langs = list(auto_subtitles_info.keys())
-                        subtitle_source = "automatic"
-
-                    # Select best language (prefer English)
-                    selected_lang = None
-                    lang_priority = ['en', 'en-US', 'en-GB', 'es']
-
+                # Smart subtitle selection: prioritize English (manual or auto) over other languages
+                selected_lang = None
+                subtitle_source = None
+                
+                # Priority order: Manual EN > Auto EN > Manual ES > Auto ES > Any Manual > Any Auto
+                lang_priority = ['en', 'en-US', 'en-GB', 'es']
+                
+                # First, try to find preferred language in manual subtitles
+                for lang in lang_priority:
+                    if lang in subtitles_info:
+                        selected_lang = lang
+                        subtitle_source = "manual"
+                        break
+                
+                # If no preferred manual subtitle found, try automatic captions
+                if not selected_lang:
                     for lang in lang_priority:
-                        if lang in available_langs:
+                        if lang in auto_subtitles_info:
                             selected_lang = lang
+                            subtitle_source = "automatic"
                             break
+                
+                # If still not found, fall back to any manual subtitle
+                if not selected_lang and subtitles_info:
+                    selected_lang = list(subtitles_info.keys())[0]
+                    subtitle_source = "manual"
+                
+                # Finally, fall back to any automatic caption
+                if not selected_lang and auto_subtitles_info:
+                    selected_lang = list(auto_subtitles_info.keys())[0]
+                    subtitle_source = "automatic"
+                
+                if not selected_lang:
+                    raise ValueError("No subtitles could be selected")
 
-                    if not selected_lang:
-                        selected_lang = available_langs[0]
+                logger.info(f"Using {subtitle_source} subtitles in language: {selected_lang}")
 
-                    logger.info(f"Using {subtitle_source} subtitles in language: {selected_lang}")
+                # For auto-generated subtitles, try multiple formats (optimized order)
+                parsed_subtitles = []
+                subtitle_file = None
+                
+                if subtitle_source == "automatic":
+                    # Try VTT first (most reliable for ASR), then JSON3, then TTML
+                    formats_to_try = ['vtt', 'json3', 'ttml']
+                else:
+                    # For manual subtitles, TTML is usually sufficient
+                    formats_to_try = ['ttml', 'vtt']
+                
+                last_error = None
 
-                    # Download subtitles
-                    ydl_opts['writesubtitles'] = subtitle_source == "manual"
-                    ydl_opts['writeautomaticsub'] = subtitle_source == "automatic"
-                    ydl_opts['subtitleslangs'] = [selected_lang]
+                for format_index, subtitle_format in enumerate(formats_to_try):
+                    try:
+                        logger.info(f"Attempting to download subtitles in {subtitle_format} format ({format_index + 1}/{len(formats_to_try)})...")
+                        
+                        # Update download options for this format
+                        ydl_opts_current = ydl_opts.copy()
+                        ydl_opts_current['outtmpl'] = os.path.join(temp_dir, '%(id)s.%(ext)s')
+                        ydl_opts_current['writesubtitles'] = subtitle_source == "manual"
+                        ydl_opts_current['writeautomaticsub'] = subtitle_source == "automatic"
+                        ydl_opts_current['subtitleslangs'] = [selected_lang]
+                        ydl_opts_current['subtitlesformat'] = subtitle_format
+                        # Add timeout to prevent hanging
+                        ydl_opts_current['socket_timeout'] = 15
+                        
+                        # Add user agent to avoid bot detection
+                        ydl_opts_current['http_headers'] = {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                        }
 
-                    with yt_dlp.YoutubeDL(ydl_opts) as ydl_download:
-                        ydl_download.download([f"https://www.youtube.com/watch?v={video_id}"])
+                        with yt_dlp.YoutubeDL(ydl_opts_current) as ydl_download:
+                            ydl_download.download([f"https://www.youtube.com/watch?v={video_id}"])
 
-                    # Find and read subtitle file
-                    subtitle_files = []
-                    for file in os.listdir(temp_dir):
-                        if file.endswith('.ttml') and selected_lang in file:
-                            subtitle_files.append(file)
+                        # Find subtitle file with this format
+                        # Note: yt-dlp might append language code
+                        subtitle_files = []
+                        
+                        # For json3, usage is inconsistent, sometimes it's just .json
+                        possible_extensions = [subtitle_format]
+                        if subtitle_format == 'json3':
+                            possible_extensions.append('json')
+                        
+                        for file in os.listdir(temp_dir):
+                            for ext in possible_extensions:
+                                if file.endswith(f'.{ext}') and (selected_lang in file or len(os.listdir(temp_dir)) == 1):
+                                    subtitle_files.append(file)
+                        
+                        if subtitle_files:
+                            subtitle_file = os.path.join(temp_dir, subtitle_files[0])
+                            
+                            with open(subtitle_file, 'r', encoding='utf-8') as f:
+                                subtitle_content = f.read()
 
-                    if not subtitle_files:
-                        raise ValueError("Subtitle file not found after download")
+                            # Parse based on format
+                            if subtitle_format == 'json3' or subtitle_files[0].endswith('.json3') or (subtitle_files[0].endswith('.json') and 'events' in subtitle_content):
+                                parsed_subtitles = self.parse_json3_subtitles(subtitle_content)
+                            elif subtitle_format == 'vtt' or subtitle_files[0].endswith('.vtt'):
+                                parsed_subtitles = self.parse_vtt_subtitles(subtitle_content)
+                            else:
+                                parsed_subtitles = self.parse_ttml_subtitles(subtitle_content)
+                            
+                            if parsed_subtitles:
+                                logger.info(f"Successfully parsed {len(parsed_subtitles)} subtitles using {subtitle_format} format")
+                                break  # Success! Stop trying other formats
+                            else:
+                                logger.warning(f"Parsed 0 subtitles with {subtitle_format}, trying next format...")
+                                # Clean up empty file before next attempt
+                                try:
+                                    os.remove(subtitle_file)
+                                except:
+                                    pass
+                        else:
+                            logger.warning(f"No subtitle file found for format {subtitle_format}")
+                            logger.warning(f"Files in temp dir: {os.listdir(temp_dir)}")
+                            
+                    except Exception as e:
+                        last_error = e
+                        logger.warning(f"Failed to get subtitles in {subtitle_format} format: {e}")
+                        # Only try next format if we haven't succeeded
+                        if format_index < len(formats_to_try) - 1:
+                            logger.info(f"Trying next format...")
+                        continue
+                
+                if not parsed_subtitles:
+                    error_msg = f"Could not parse subtitle content in any supported format. Last error: {last_error}"
+                    logger.error(error_msg)
+                    raise ValueError(error_msg)
 
-                    subtitle_file = os.path.join(temp_dir, subtitle_files[0])
-
-                    with open(subtitle_file, 'r', encoding='utf-8') as f:
-                        subtitle_content = f.read()
-
-                    # Parse subtitles
-                    parsed_subtitles = self.parse_ttml_subtitles(subtitle_content)
-
-                    if not parsed_subtitles:
-                        raise ValueError("Could not parse subtitle content")
-
-                    return {
-                        'success': True,
-                        'video_id': video_id,
-                        'video_title': info.get('title', 'Unknown'),
-                        'language': selected_lang,
-                        'source': subtitle_source,
-                        'subtitle_count': len(parsed_subtitles),
-                        'subtitles': parsed_subtitles
-                    }
+                return {
+                    'success': True,
+                    'video_id': video_id,
+                    'video_title': info.get('title', 'Unknown'),
+                    'language': selected_lang,
+                    'source': subtitle_source,
+                    'subtitle_count': len(parsed_subtitles),
+                    'subtitles': parsed_subtitles
+                }
 
             except yt_dlp.DownloadError as e:
                 error_msg = str(e)
@@ -270,7 +434,7 @@ def home():
     return jsonify({
         'status': 'running',
         'service': 'Noticing Game Subtitle Server',
-        'version': '0.1.1',
+        'version': __version__,
         'timestamp': datetime.now().isoformat()
     })
 
@@ -279,8 +443,8 @@ def info():
     """Server information endpoint"""
     return jsonify({
         'name': 'Noticing Game - Subtitle Extraction Server',
-        'version': '0.1.1',
-        'description': 'Backend server using yt-dlp to extract YouTube subtitles for the Noticing Game extension',
+        'version': __version__,
+        'description': 'Backend server for subtitle extraction on YouTube, Netflix, and Disney+. Compatible with Chromium-based browsers.',
         'author': 'Rafael Hernandez Bustamante',
         'license': 'GNU General Public License v3.0 (GPL-3.0)',
         'repository': 'https://github.com/Rudull/noticing-game',

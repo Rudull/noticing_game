@@ -2,7 +2,9 @@
 assets/*.xcf
 assets/noticing_game.zip
 assets/noticing_game.pem
+assets/noticing_game.crx
 assets/*.pem
+assets/*.crx
 
 # Build directories and files
 backend/build/

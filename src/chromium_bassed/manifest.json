@@ -1,0 +1,153 @@
+{
+  "manifest_version": 3,
+  "name": "Noticing Game",
+  "version": "0.4.3",
+  "description": "Enhance language learning by detecting frequent words in YouTube subtitles, enabling interactive vocabulary practice.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "*://*.youtube.com/*",
+    "https://www.googleapis.com/*",
+    "http://localhost:5000/*",
+    "http://127.0.0.1:5000/*",
+    "http://127.0.0.1:8765/*",
+    "http://localhost:8765/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.youtube.com/watch?*"
+      ],
+      "js": [
+        "content-bridge.js",
+        "utils/text-processing.js",
+        "utils/youtube-video-utils.js",
+        "word-detection.js",
+        "subtitle-extraction.js",
+        "subtitle-analysis.js",
+        "subtitle-processor.js",
+        "activity-heatmap.js",
+        "ui-components.js",
+        "panel-manager.js",
+        "word-list-manager.js",
+        "word-difficulty-tracker.js",
+        "word-sorting-modes.js",
+        "game-logic.js",
+        "youtube-integration.js",
+        "utils/server-version-check.js",
+        "anki-integration.js",
+        "ui-manager.js",
+        "content.js"
+      ],
+      "css": [
+        "floating-panel.css"
+      ],
+      "run_at": "document_end"
+    },
+    {
+      "matches": [
+        "*://*.netflix.com/watch/*"
+      ],
+      "js": [
+        "netflix-interceptor.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "*://*.netflix.com/watch/*"
+      ],
+      "js": [
+        "content-bridge.js",
+        "utils/text-processing.js",
+        "word-detection.js",
+        "subtitle-extraction.js",
+        "subtitle-analysis.js",
+        "subtitle-processor.js",
+        "activity-heatmap.js",
+        "ui-components.js",
+        "panel-manager.js",
+        "word-list-manager.js",
+        "word-difficulty-tracker.js",
+        "word-sorting-modes.js",
+        "game-logic.js",
+        "netflix-integration.js",
+        "utils/server-version-check.js",
+        "anki-integration.js",
+        "ui-manager.js",
+        "content.js"
+      ],
+      "css": [
+        "floating-panel.css"
+      ],
+      "run_at": "document_end"
+    },
+    {
+      "matches": [
+        "*://*.disneyplus.com/*"
+      ],
+      "js": [
+        "disney-interceptor.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "*://*.disneyplus.com/*"
+      ],
+      "js": [
+        "content-bridge.js",
+        "utils/text-processing.js",
+        "word-detection.js",
+        "subtitle-extraction.js",
+        "subtitle-analysis.js",
+        "subtitle-processor.js",
+        "activity-heatmap.js",
+        "ui-components.js",
+        "panel-manager.js",
+        "word-list-manager.js",
+        "word-difficulty-tracker.js",
+        "word-sorting-modes.js",
+        "game-logic.js",
+        "disney-integration.js",
+        "utils/server-version-check.js",
+        "anki-integration.js",
+        "ui-manager.js",
+        "content.js"
+      ],
+      "css": [
+        "floating-panel.css"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "word-list.json",
+        "content-bridge.js",
+        "icons/*"
+      ],
+      "matches": [
+        "*://*.youtube.com/*",
+        "*://*.netflix.com/*"
+      ]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
